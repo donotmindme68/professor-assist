@@ -8,11 +8,13 @@ import { ProfessorAvatar } from "./professor-avatar";
 import { ScrollArea } from "./ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { getAIResponse } from "@/lib/perplexity";
+import { AnimatedText } from "./animated-text";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
   citations?: string[];
+  isAnimating?: boolean;
 }
 
 export function ChatBox() {
@@ -36,7 +38,8 @@ export function ChatBox() {
       setMessages(prev => [...prev, {
         role: "assistant",
         content: aiMessage.content,
-        citations: response.citations
+        citations: response.citations,
+        isAnimating: true
       }]);
     } catch (error) {
       toast({
@@ -57,10 +60,16 @@ export function ChatBox() {
     });
   };
 
+  const handleAnimationComplete = (index: number) => {
+    setMessages(prev => prev.map((msg, i) => 
+      i === index ? { ...msg, isAnimating: false } : msg
+    ));
+  };
+
   return (
     <div className="flex flex-col gap-6 max-w-4xl mx-auto p-4">
       <div className="flex justify-center">
-        <ProfessorAvatar isAnimating={isLoading} />
+        <ProfessorAvatar isAnimating={isLoading || messages.some(m => m.isAnimating)} />
       </div>
 
       <Card className="p-4">
@@ -77,7 +86,15 @@ export function ChatBox() {
                   }
                 `}
               >
-                <p>{msg.content}</p>
+                {msg.role === "assistant" && msg.isAnimating ? (
+                  <AnimatedText 
+                    text={msg.content} 
+                    onComplete={() => handleAnimationComplete(i)}
+                    speed={30}
+                  />
+                ) : (
+                  <p>{msg.content}</p>
+                )}
                 {msg.citations && (
                   <div className="mt-2 text-sm text-muted-foreground">
                     <p className="font-semibold">Sources:</p>

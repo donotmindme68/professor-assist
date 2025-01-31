@@ -16,34 +16,27 @@ export interface PerplexityResponse {
 }
 
 export async function getAIResponse(question: string): Promise<PerplexityResponse> {
-  const response = await fetch(PERPLEXITY_API_URL, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${import.meta.env.VITE_PERPLEXITY_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "llama-3.1-sonar-small-128k-online",
-      messages: [
-        {
-          role: "system",
-          content: "You are a knowledgeable professor who provides clear, accurate, and educational responses to student questions."
-        },
-        {
-          role: "user",
-          content: question
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 2000));
+
+  // Demo response
+  return {
+    id: "demo-response-" + Date.now(),
+    model: "demo-model",
+    created: Date.now(),
+    citations: [
+      "https://example.com/demo-citation-1",
+      "https://example.com/demo-citation-2"
+    ],
+    choices: [
+      {
+        index: 0,
+        finish_reason: "stop",
+        message: {
+          role: "assistant",
+          content: `Thank you for your question about "${question}". As your AI professor, I'd be happy to help you understand this topic better. This is a demo response that demonstrates the format and structure of our conversation. In a real implementation, this would be replaced with an actual AI-generated response that directly addresses your specific question.`
         }
-      ],
-      temperature: 0.2,
-      top_p: 0.9,
-      return_citations: true,
-      stream: false
-    })
-  });
-
-  if (!response.ok) {
-    throw new Error(`API request failed: ${response.statusText}`);
-  }
-
-  return response.json();
+      }
+    ]
+  };
 }

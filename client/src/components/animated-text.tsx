@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
+import Speech from "speak-tts";
+
 
 interface AnimatedTextProps {
   text: string;
   onComplete?: () => void;
   speed?: number;
 }
+
+
 
 export function AnimatedText({ text, onComplete, speed = 30 }: AnimatedTextProps) {
   const [displayedText, setDisplayedText] = useState("");
@@ -22,6 +26,20 @@ export function AnimatedText({ text, onComplete, speed = 30 }: AnimatedTextProps
       onComplete?.();
     }
   }, [currentIndex, text, speed, onComplete]);
+
+  useEffect(() => {
+    const speech = new Speech();
+    speech.init().then(() => {
+      try {
+        speech.setVoice('Google UK English Male')
+      } catch (e) {
+        console.error(e);
+        console.log("If u are using this error, ur browser does not have the required Male voice installed. This will be fixed once OpenAI APIs are fixed")
+      }
+      speech.speak({text});
+    })
+    return speech.cancel()
+  }, [text]);
 
   useEffect(() => {
     setDisplayedText("");

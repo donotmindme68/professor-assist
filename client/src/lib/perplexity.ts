@@ -34,7 +34,7 @@ export async function getAIResponse(question: string): Promise<PerplexityRespons
         finish_reason: "stop",
         message: {
           role: "assistant",
-          content: `Thank you for your question about "${question}". As your AI professor, I'd be happy to help you understand this topic better. This is a demo response that demonstrates the format and structure of our conversation. In a real implementation, this would be replaced with an actual AI-generated response that directly addresses your specific question.`
+          content: `Thank you for your question saying ${question}. As your AI professor, I'd be happy to help you understand this topic better. This is a demo response that demonstrates the format and structure of our conversation. Once the OPEN AI API is setup, this would be replaced with an actual AI-generated response that directly addresses your specific question. My voice would also seem more natural`
         }
       }
     ]

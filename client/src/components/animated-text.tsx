@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import Speech from "speak-tts";
+// @ts-ignore
+import Speech from 'speak-tts';
 
 
 interface AnimatedTextProps {

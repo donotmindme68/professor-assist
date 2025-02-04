@@ -30,7 +30,7 @@ export function ProfessorAvatar({ isAnimating }: ProfessorAvatarProps) {
       className="relative w-32 h-32 md:w-48 md:h-48 rounded-full overflow-hidden shadow-lg border-4 border-primary"
     >
       <img
-        src="https://images.unsplash.com/photo-1568602471122-7832951cc4c5"
+        src="/professor.jpeg"
         alt="AI Professor"
         className="w-full h-full object-cover"
       />

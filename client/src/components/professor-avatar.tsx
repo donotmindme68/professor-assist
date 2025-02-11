@@ -1,42 +1,22 @@
-import { motion, useAnimationControls } from "framer-motion";
-import { useEffect } from "react";
+import {motion} from 'framer-motion';
+import {GraduationCap} from 'lucide-react';
+import professorImage from '../assets/woman-professor.jpg'
 
 interface ProfessorAvatarProps {
-  isAnimating: boolean;
+    isAnimating?: boolean;
 }
 
-export function ProfessorAvatar({ isAnimating }: ProfessorAvatarProps) {
-  const controls = useAnimationControls();
-  
-  useEffect(() => {
-    if (isAnimating) {
-      controls.start({
-        y: [-2, 2, -2],
-        transition: {
-          duration: 1.5,
-          repeat: Infinity,
-          ease: "easeInOut"
-        }
-      });
-    } else {
-      controls.stop();
-      controls.set({ y: 0 });
-    }
-  }, [isAnimating]);
-
-  return (
-    <motion.div
-      animate={controls}
-      className="relative w-32 h-32 md:w-48 md:h-48 rounded-full overflow-hidden shadow-lg border-4 border-primary"
-    >
-      <img
-        src="https://0x0.st/8Kwe.jpg"
-        alt="AI Professor"
-        className="w-full h-full object-cover"
-      />
-      {isAnimating && (
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary animate-pulse" />
-      )}
-    </motion.div>
-  );
+export function ProfessorAvatar({isAnimating}: ProfessorAvatarProps) {
+    return (
+        <motion.div
+            className="relative w-40 h-40 rounded-full bg-gradient-to-r from-primary to-primary/70 flex items-center justify-center overflow-hidden"
+            animate={isAnimating ? {
+                scale: [1, 1.1, 1],
+                transition: {repeat: Infinity, duration: 2}
+            } : {}}
+        >
+            {/*<GraduationCap className="w-8 h-8 text-primary-foreground" />*/}
+            <img alt={'professor image'} className="w-40 h-40" src={professorImage}/>
+        </motion.div>
+    );
 }

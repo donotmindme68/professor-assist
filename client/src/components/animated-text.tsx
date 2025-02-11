@@ -1,7 +1,5 @@
-import { useEffect, useState } from "react";
-// @ts-ignore
-import Speech from 'speak-tts';
-
+import { motion, useAnimation } from 'framer-motion';
+import { useEffect } from 'react';
 
 interface AnimatedTextProps {
   text: string;
@@ -9,43 +7,37 @@ interface AnimatedTextProps {
   speed?: number;
 }
 
-
-
 export function AnimatedText({ text, onComplete, speed = 30 }: AnimatedTextProps) {
-  const [displayedText, setDisplayedText] = useState("");
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const controls = useAnimation();
 
   useEffect(() => {
-    if (currentIndex < text.length) {
-      const timer = setTimeout(() => {
-        setDisplayedText(prev => prev + text[currentIndex]);
-        setCurrentIndex(prev => prev + 1);
-      }, speed);
-
-      return () => clearTimeout(timer);
-    } else {
-      onComplete?.();
-    }
-  }, [currentIndex, text, speed, onComplete]);
-
-  useEffect(() => {
-    const speech = new Speech();
-    speech.init().then(() => {
-      try {
-        speech.setVoice('Google UK English Male')
-      } catch (e) {
-        console.error(e);
-        console.log("If u are using this error, ur browser does not have the required Male voice installed. This will be fixed once OpenAI APIs are fixed")
+    let timeout: NodeJS.Timeout;
+    
+    const animate = async () => {
+      await controls.start({
+        opacity: 1,
+        transition: { duration: 0.5 }
+      });
+      
+      if (onComplete) {
+        timeout = setTimeout(onComplete, text.length * speed);
       }
-      speech.speak({text});
-    })
-    return speech.cancel()
-  }, [text]);
+    };
 
-  useEffect(() => {
-    setDisplayedText("");
-    setCurrentIndex(0);
-  }, [text]);
+    animate();
 
-  return <span>{displayedText}</span>;
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [text, controls, onComplete, speed]);
+
+  return (
+    <motion.p
+      initial={{ opacity: 0 }}
+      animate={controls}
+      className="leading-relaxed"
+    >
+      {text}
+    </motion.p>
+  );
 }

@@ -1,49 +1,46 @@
-import { useCallback } from "react";
-import { useDropzone } from "react-dropzone";
-import { Card } from "./ui/card";
-import { LucideUpload } from "lucide-react";
+import { useCallback, ReactNode } from 'react';
+import { motion } from 'framer-motion';
+import { cn } from '../lib/utils';
 
 interface FileUploadProps {
   onFilesSelected: (files: File[]) => void;
-  maxFiles?: number;
+  children?: ReactNode;
 }
 
-export function FileUpload({ onFilesSelected, maxFiles = 5 }: FileUploadProps) {
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    onFilesSelected(acceptedFiles);
+export function FileUpload({ onFilesSelected, children }: FileUploadProps) {
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const files = Array.from(e.dataTransfer.files);
+    onFilesSelected(files);
   }, [onFilesSelected]);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    maxFiles,
-    accept: {
-      'image/*': ['.png', '.jpg', '.jpeg', '.gif'],
-      'application/pdf': ['.pdf'],
-      'text/*': ['.txt', '.md']
-    }
-  });
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    onFilesSelected(files);
+  }, [onFilesSelected]);
 
   return (
-    <Card
-      {...getRootProps()}
-      className={`
-        p-8 border-2 border-dashed cursor-pointer
-        transition-colors duration-200
-        ${isDragActive ? 'border-primary bg-primary/5' : 'border-muted'}
-      `}
+    <div
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={handleDrop}
+      className="relative"
     >
-      <input {...getInputProps()} />
-      <div className="flex flex-col items-center gap-4 text-muted-foreground">
-        <LucideUpload className="w-8 h-8" />
-        {isDragActive ? (
-          <p>Drop the files here...</p>
-        ) : (
-          <p>Drag & drop files here, or click to select files</p>
+      <motion.label className="cursor-pointer">
+        {children || (
+          <div className={cn(
+            "flex items-center gap-2 p-2 rounded-lg",
+            "hover:bg-muted transition-colors"
+          )}>
+            <span className="text-sm">Attach files</span>
+          </div>
         )}
-        <p className="text-sm">
-          Supports images, PDFs, and text files (max {maxFiles} files)
-        </p>
-      </div>
-    </Card>
+        <input
+          type="file"
+          multiple
+          onChange={handleChange}
+          className="hidden"
+        />
+      </motion.label>
+    </div>
   );
 }

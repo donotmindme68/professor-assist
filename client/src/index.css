@@ -3,11 +3,38 @@
 @tailwind utilities;
 
 @layer base {
-  * {
-    @apply border-border;
+  :root {
+    --background: #ffffff;
+    --foreground: #0f172a;
+    --primary: #3b82f6;
+    --primary-foreground: #ffffff;
+    --muted: #f1f5f9;
+    --muted-foreground: #64748b;
+    --card: #ffffff;
+    --card-foreground: #0f172a;
   }
 
-  body {
-    @apply font-sans antialiased bg-background text-foreground;
+  .dark {
+    --background: #0f172a;
+    --foreground: #f8fafc;
+    --primary: #60a5fa;
+    --primary-foreground: #0f172a;
+    --muted: #1e293b;
+    --muted-foreground: #94a3b8;
+    --card: #1e293b;
+    --card-foreground: #f8fafc;
   }
+}
+
+body {
+  @apply bg-background text-foreground transition-colors duration-300;
+}
+
+/* Chat bubble triangles */
+.clip-triangle-right {
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+
+.clip-triangle-left {
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
 }

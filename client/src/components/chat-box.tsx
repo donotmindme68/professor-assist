@@ -1,18 +1,13 @@
-import {useEffect, useRef, useState} from "react";
-import {Card} from "./ui/card";
-import {Textarea} from "./ui/textarea";
-import {Button} from "./ui/button";
-import {Send} from "lucide-react";
-import {FileUpload} from "./file-upload";
-import {ProfessorAvatar} from "./professor-avatar";
-import {ScrollArea} from "./ui/scroll-area";
-import {useToast} from "@/hooks/use-toast";
-import {getAIResponse} from "@/lib/perplexity";
-import {AnimatedText} from "./animated-text";
-
+import {useEffect, useRef, useState} from 'react';
+import {motion, AnimatePresence} from 'framer-motion';
+import {Send, Paperclip, Volume2, VolumeX, ChevronDown, ChevronUp} from 'lucide-react';
+import {FileUpload} from './file-upload';
+import {ProfessorAvatar} from './professor-avatar';
+import {AnimatedText} from './animated-text';
+import {cn} from '../lib/utils';
 
 interface Message {
-    role: "user" | "assistant";
+    role: 'user' | 'assistant';
     content: string;
     citations?: string[];
     isAnimating?: boolean;
@@ -20,49 +15,97 @@ interface Message {
 
 export function ChatBox() {
     const [messages, setMessages] = useState<Message[]>([]);
-    const [input, setInput] = useState("");
+    const [input, setInput] = useState('');
     const [files, setFiles] = useState<File[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const {toast} = useToast();
+    const [voiceEnabled, setVoiceEnabled] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(false);
+    const [threadId, setThreadId] = useState<number | null>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
+    const synth = window.speechSynthesis;
 
     useEffect(() => {
-        bottomRef.current!.scrollIntoView({behavior: "smooth"});
-    },[messages])
+        // Create a new thread when the component mounts
+        const createThread = async () => {
+            try {
+                const response = await fetch('/api/threads', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        userId: 1, // Replace with actual user ID
+                        subjectType: 'General', // Replace with actual subject type
+                    }),
+                });
+                const data = await response.json();
+                setThreadId(data.id);
+            } catch (error) {
+                console.error('Failed to create thread:', error);
+            }
+        };
+
+        createThread();
+    }, []);
+
+    useEffect(() => {
+        bottomRef.current?.scrollIntoView({behavior: 'smooth'});
+    }, [messages]);
+
+    useEffect(() => {
+        // Cancel any ongoing speech when voice is disabled
+        if (!voiceEnabled) {
+            synth.cancel();
+        }
+    }, [voiceEnabled]);
+
+    const speakMessage = (text: string) => {
+        if (voiceEnabled) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            synth.speak(utterance);
+        }
+    };
+
     const handleSubmit = async () => {
-        if (!input.trim()) return;
+        if (!input.trim() || !threadId) return;
 
         try {
             setIsLoading(true);
-            setMessages(prev => [...prev, {role: "user", content: input}]);
-            setInput("");
+            setMessages(prev => [...prev, {role: 'user', content: input}]);
+            setInput('');
 
-            const response = await getAIResponse(input);
-            const aiMessage = response.choices[0].message;
-
-            setMessages(prev => [...prev, {
-                role: "assistant",
-                content: aiMessage.content,
-                citations: response.citations,
-                isAnimating: true
-            }]);
-        } catch (error) {
-            toast({
-                title: "Error",
-                description: "Failed to get AI response. Please try again.",
-                variant: "destructive"
+            // Append user message to the thread and optionally get AI response
+            const response = await fetch(`/api/threads/${threadId}/messages`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    content: input,
+                    role: 'user',
+                    useOpenAI: true, // Toggle OpenAI integration
+                }),
             });
-        } finally {
+            const {message, assistantResponse} = await response.json();
+
+            if (assistantResponse) {
+                setMessages(prev => [...prev, {
+                    role: 'assistant',
+                    content: assistantResponse,
+                    isAnimating: true
+                }]);
+                speakMessage(assistantResponse);
+            }
+
+            setIsLoading(false);
+        } catch (error) {
+            console.error('Failed to append to thread:', error);
             setIsLoading(false);
         }
     };
 
     const handleFilesSelected = (newFiles: File[]) => {
         setFiles(prev => [...prev, ...newFiles]);
-        toast({
-            title: "Files uploaded",
-            description: `${newFiles.length} files have been attached`
-        });
     };
 
     const handleAnimationComplete = (index: number) => {
@@ -72,35 +115,63 @@ export function ChatBox() {
     };
 
     return (
-        <div className="flex flex-col gap-6 max-w-4xl mx-auto p-4">
+        <motion.div
+            initial={{opacity: 0, y: 20}}
+            animate={{opacity: 1, y: 0}}
+            transition={{duration: 0.5}}
+            className="flex flex-col gap-6 max-w-4xl mx-auto"
+        >
             <div className="flex justify-center">
                 <ProfessorAvatar isAnimating={isLoading || messages.some(m => m.isAnimating)}/>
             </div>
 
-            <Card className="p-4">
-                <ScrollArea className="h-[400px] mb-4">
-                    <div className="flex flex-col gap-4 p-2">
+            <div className="bg-card rounded-lg shadow-lg p-4">
+                <div className="flex justify-end mb-2">
+                    <motion.button
+                        whileHover={{scale: 1.05}}
+                        whileTap={{scale: 0.95}}
+                        onClick={() => setVoiceEnabled(!voiceEnabled)}
+                        className="p-2 rounded-full hover:bg-muted transition-colors"
+                    >
+                        {voiceEnabled ? (
+                            <Volume2 className="w-5 h-5 text-primary"/>
+                        ) : (
+                            <VolumeX className="w-5 h-5 text-muted-foreground"/>
+                        )}
+                    </motion.button>
+                </div>
+
+                <div className="h-[400px] overflow-y-auto mb-4 scroll-smooth">
+                    <AnimatePresence mode="popLayout">
                         {messages.map((msg, i) => (
-                            <div
+                            <motion.div
                                 key={i}
-                                className={`
-                  flex flex-col gap-2 p-4 rounded-lg
-                  ${msg.role === "user"
-                                    ? "bg-muted self-end max-w-[80%]"
-                                    : "bg-primary/10 self-start max-w-[80%]"
-                                }
-                `}
+                                initial={{opacity: 0, y: 20}}
+                                animate={{opacity: 1, y: 0}}
+                                exit={{opacity: 0, y: -20}}
+                                className={cn(
+                                    'flex flex-col gap-2 p-4 rounded-2xl mb-4 shadow-sm relative',
+                                    msg.role === 'user'
+                                        ? 'bg-primary text-primary-foreground self-end ml-12 mr-2 rounded-br-sm'
+                                        : 'bg-gradient-to-br from-card-foreground/5 to-card-foreground/10 backdrop-blur-sm self-start ml-2 mr-12 rounded-bl-sm'
+                                )}
                             >
-                                {msg.role === "assistant" && msg.isAnimating ? (
+                                {/* Triangle for chat bubble */}
+                                <div className={cn(
+                                    'absolute bottom-0 w-4 h-4',
+                                    msg.role === 'user'
+                                        ? 'right-0 transform translate-y-1/2 bg-primary clip-triangle-right'
+                                        : 'left-0 transform translate-y-1/2 bg-gradient-to-br from-card-foreground/5 to-card-foreground/10 clip-triangle-left'
+                                )}
+                                />
+
+                                {msg.role === 'assistant' && msg.isAnimating ? (
                                     <AnimatedText
                                         text={msg.content}
-                                        onComplete={() => {
-                                            handleAnimationComplete(i)
-                                        }}
-                                        speed={30}
+                                        onComplete={() => handleAnimationComplete(i)}
                                     />
                                 ) : (
-                                    <p>{msg.content}</p>
+                                    <p className="leading-relaxed">{msg.content}</p>
                                 )}
                                 {msg.citations && (
                                     <div className="mt-2 text-sm text-muted-foreground">
@@ -121,30 +192,64 @@ export function ChatBox() {
                                         </ul>
                                     </div>
                                 )}
-                            </div>
+                            </motion.div>
                         ))}
-                    </div>
-                    <span ref={bottomRef}/>
-                </ScrollArea>
-
-                <FileUpload onFilesSelected={handleFilesSelected}/>
-
-                <div className="flex gap-2 mt-4">
-                    <Textarea
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        placeholder="Ask your question..."
-                        className="min-h-[100px]"
-                    />
-                    <Button
-                        onClick={handleSubmit}
-                        disabled={isLoading || !input.trim()}
-                        className="self-end"
-                    >
-                        <Send className="w-4 h-4"/>
-                    </Button>
+                    </AnimatePresence>
+                    <div ref={bottomRef}/>
                 </div>
-            </Card>
-        </div>
+
+                <div className="relative">
+                    <div className="flex gap-2">
+                        <div className="flex-1 relative">
+              <textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Ask your question..."
+                  className={cn(
+                      "w-full p-3 pr-24 rounded-lg bg-muted resize-none focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200",
+                      isExpanded ? "min-h-[150px]" : "min-h-[50px]"
+                  )}
+              />
+                            <div className="absolute right-2 top-2 flex items-center gap-1">
+                                <FileUpload onFilesSelected={handleFilesSelected}>
+                                    <motion.button
+                                        whileHover={{scale: 1.05}}
+                                        whileTap={{scale: 0.95}}
+                                        className="p-2 rounded-full hover:bg-background/50 transition-colors"
+                                    >
+                                        <Paperclip className="w-4 h-4 text-muted-foreground"/>
+                                    </motion.button>
+                                </FileUpload>
+                                <motion.button
+                                    whileHover={{scale: 1.05}}
+                                    whileTap={{scale: 0.95}}
+                                    onClick={() => setIsExpanded(!isExpanded)}
+                                    className="p-2 rounded-full hover:bg-background/50 transition-colors"
+                                >
+                                    {isExpanded ? (
+                                        <ChevronDown className="w-4 h-4 text-muted-foreground"/>
+                                    ) : (
+                                        <ChevronUp className="w-4 h-4 text-muted-foreground"/>
+                                    )}
+                                </motion.button>
+                                <motion.button
+                                    whileHover={{scale: 1.05}}
+                                    whileTap={{scale: 0.95}}
+                                    onClick={handleSubmit}
+                                    disabled={isLoading || !input.trim()}
+                                    className={cn(
+                                        'p-2 rounded-full bg-primary text-primary-foreground',
+                                        'disabled:opacity-50 disabled:cursor-not-allowed',
+                                        'transition-colors hover:bg-primary/90'
+                                    )}
+                                >
+                                    <Send className="w-4 h-4"/>
+                                </motion.button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </motion.div>
     );
 }

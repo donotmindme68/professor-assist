@@ -52,13 +52,14 @@ export function registerRoutes(app: Express): Server {
     // Create a new thread
     app.post('/api/threads', async (req, res) => {
         try {
-            const [thread] = await db.insert(threads)
-                .values({
-                    userId: req.body.userId,
-                    subjectType: req.body.subjectType,
-                })
-                .returning();
-            res.json(thread);
+            // const [thread] = await db.insert(threads)
+            //     .values({
+            //         userId: req.body.userId,
+            //         subjectType: req.body.subjectType,
+            //     })
+            //     .returning();
+            // res.json(thread);
+            res.json({id: 1})
         } catch (error) {
             res.status(500).json({error: 'Failed to create thread'});
         }
@@ -68,44 +69,38 @@ export function registerRoutes(app: Express): Server {
     app.post('/api/threads/:id/messages', upload.array('files', 5), async (req, res) => {
         try {
             const threadId = parseInt(req.params.id);
-            const {content, role, useOpenAI} = req.body;
+            const {content, role, chatHistory, useOpenAI} = req.body;
 
             // Append the user message to the thread
-            const [message] = await db.insert(messages)
-                .values({
-                    threadId,
-                    content,
-                    role,
-                })
-                .returning();
+            // const [message] = await db.insert(messages) // TODO: fix
+            //     .values({
+            //         threadId,
+            //         content,
+            //         role,
+            //     })
+            //     .returning();
 
             // Handle file uploads if any
-            if (req.files && req.files.length > 0) {
-                const uploadedFiles = req.files as Express.Multer.File[];
-                const filesData = uploadedFiles.map(file => ({
-                    messageId: message.id,
-                    filename: file.originalname,
-                    contentType: file.mimetype,
-                    path: file.path
-                }));
-
-                await db.insert(files)
-                    .values(filesData)
-                    .returning();
-            }
+            // if (req.files && req.files.length > 0) {
+            //     const uploadedFiles = req.files as Express.Multer.File[];
+            //     const filesData = uploadedFiles.map(file => ({
+            //         messageId: message.id,
+            //         filename: file.originalname,
+            //         contentType: file.mimetype,
+            //         path: file.path,
+            //     }));
+            //
+            //     await db.insert(files)
+            //         .values(filesData)
+            //         .returning();
+            // }
 
             let assistantResponse = null;
 
             // Optionally send to OpenAI API
             if (useOpenAI) {
-                // Fetch the thread history
-                const threadHistory = await db.query.messages.findMany({
-                    where: eq(messages.threadId, threadId),
-                    orderBy: (messages, {asc}) => [asc(messages.createdAt)],
-                });
-
                 // Prepare messages for OpenAI
-                const openAIMessages = threadHistory.map(msg => ({
+                const openAIMessages = chatHistory.map(msg => ({
                     role: msg.role === 'user' ? 'user' : 'assistant',
                     content: msg.content,
                 }));
@@ -119,18 +114,19 @@ export function registerRoutes(app: Express): Server {
                 assistantResponse = completion.choices[0].message.content;
 
                 // Append the assistant response to the thread
-                const [assistantMessage] = await db.insert(messages)
-                    .values({
-                        threadId,
-                        content: assistantResponse ?? "",
-                        role: 'assistant',
-                    })
-                    .returning();
+                // const [assistantMessage] = await db.insert(messages) // TODO: fix
+                //     .values({
+                //         threadId,
+                //         content: assistantResponse ?? "",
+                //         role: 'assistant',
+                //     })
+                //     .returning();
 
-                assistantResponse = assistantMessage.content;
+                // assistantResponse = assistantMessage.content;
             }
 
-            res.json({message, assistantResponse});
+            // res.json({ message, assistantResponse });
+            res.json({message: 'blah', assistantResponse});
         } catch (error) {
             console.error('Failed to append to thread:', error);
             res.status(500).json({error: 'Failed to append to thread'});

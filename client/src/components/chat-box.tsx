@@ -71,10 +71,16 @@ export function ChatBox() {
 
         try {
             setIsLoading(true);
-            setMessages(prev => [...prev, {role: 'user', content: input}]);
+
+            // Add the user's message to the local state
+            const userMessage = { role: 'user', content: input } as Message;
+            setMessages(prev => [...prev, userMessage]);
             setInput('');
 
-            // Append user message to the thread and optionally get AI response
+            // Prepare the entire chat history to send to the server
+            const chatHistory = [...messages, userMessage];
+
+            // Append the user message to the thread and get the AI response
             const response = await fetch(`/api/threads/${threadId}/messages`, {
                 method: 'POST',
                 headers: {
@@ -83,16 +89,19 @@ export function ChatBox() {
                 body: JSON.stringify({
                     content: input,
                     role: 'user',
+                    chatHistory, // Send the entire chat history
                     useOpenAI: true, // Toggle OpenAI integration
                 }),
             });
-            const {message, assistantResponse} = await response.json();
+
+            const { assistantResponse } = await response.json();
 
             if (assistantResponse) {
+                // Add the assistant's response to the local state
                 setMessages(prev => [...prev, {
                     role: 'assistant',
                     content: assistantResponse,
-                    isAnimating: true
+                    isAnimating: true,
                 }]);
                 speakMessage(assistantResponse);
             }

@@ -5,6 +5,9 @@ import {FileUpload} from './file-upload';
 import {ProfessorAvatar} from './professor-avatar';
 import {AnimatedText} from './animated-text';
 import {cn} from '../lib/utils';
+import {CodeBlock} from './code-block';
+import {Poll} from './poll';
+import {parseMessage} from '../lib/message-parser';
 
 interface Message {
     role: 'user' | 'assistant';
@@ -119,146 +122,178 @@ export function ChatBox() {
 
     const handleAnimationComplete = (index: number) => {
         setMessages(prev => prev.map((msg, i) =>
-            i === index ? {...msg, isAnimating: false} : msg
+          i === index ? {...msg, isAnimating: false} : msg
         ));
     };
 
-    return (
-        <motion.div
-            initial={{opacity: 0, y: 20}}
-            animate={{opacity: 1, y: 0}}
-            transition={{duration: 0.5}}
-            className="flex flex-col gap-6 max-w-4xl mx-auto"
-        >
-            <div className="flex justify-center">
-                <ProfessorAvatar isAnimating={isLoading || messages.some(m => m.isAnimating)}/>
-            </div>
-
-            <div className="bg-card rounded-lg shadow-lg p-4">
-                <div className="flex justify-end mb-2">
-                    <motion.button
-                        whileHover={{scale: 1.05}}
-                        whileTap={{scale: 0.95}}
-                        onClick={() => setVoiceEnabled(!voiceEnabled)}
-                        className="p-2 rounded-full hover:bg-muted transition-colors"
-                    >
-                        {voiceEnabled ? (
-                            <Volume2 className="w-5 h-5 text-primary"/>
-                        ) : (
-                            <VolumeX className="w-5 h-5 text-muted-foreground"/>
-                        )}
-                    </motion.button>
-                </div>
-
-                <div className="h-[400px] overflow-y-auto mb-4 scroll-smooth">
-                    <AnimatePresence mode="popLayout">
-                        {messages.map((msg, i) => (
-                            <motion.div
-                                key={i}
-                                initial={{opacity: 0, y: 20}}
-                                animate={{opacity: 1, y: 0}}
-                                exit={{opacity: 0, y: -20}}
-                                className={cn(
-                                    'flex flex-col gap-2 p-4 rounded-2xl mb-4 shadow-sm relative',
-                                    msg.role === 'user'
-                                        ? 'bg-primary text-primary-foreground self-end ml-12 mr-2 rounded-br-sm'
-                                        : 'bg-gradient-to-br from-card-foreground/5 to-card-foreground/10 backdrop-blur-sm self-start ml-2 mr-12 rounded-bl-sm'
-                                )}
-                            >
-                                {/* Triangle for chat bubble */}
-                                <div className={cn(
-                                    'absolute bottom-0 w-4 h-4',
-                                    msg.role === 'user'
-                                        ? 'right-0 transform translate-y-1/2 bg-primary clip-triangle-right'
-                                        : 'left-0 transform translate-y-1/2 bg-gradient-to-br from-card-foreground/5 to-card-foreground/10 clip-triangle-left'
-                                )}
-                                />
-
-                                {msg.role === 'assistant' && msg.isAnimating ? (
-                                    <AnimatedText
-                                        text={msg.content}
-                                        onComplete={() => handleAnimationComplete(i)}
-                                    />
-                                ) : (
-                                    <p className="leading-relaxed">{msg.content}</p>
-                                )}
-                                {msg.citations && (
-                                    <div className="mt-2 text-sm text-muted-foreground">
-                                        <p className="font-semibold">Sources:</p>
-                                        <ul className="list-disc list-inside">
-                                            {msg.citations.map((citation, i) => (
-                                                <li key={i}>
-                                                    <a
-                                                        href={citation}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="hover:underline"
-                                                    >
-                                                        {citation}
-                                                    </a>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
-                            </motion.div>
-                        ))}
-                    </AnimatePresence>
-                    <div ref={bottomRef}/>
-                </div>
-
-                <div className="relative">
-                    <div className="flex gap-2">
-                        <div className="flex-1 relative">
-              <textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask your question..."
-                  className={cn(
-                      "w-full p-3 pr-24 rounded-lg bg-muted resize-none focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200",
-                      isExpanded ? "min-h-[150px]" : "min-h-[50px]"
-                  )}
+    const renderMessageContent = (message: Message) => {
+        if (message.isAnimating) {
+            return (
+              <AnimatedText
+                text={message.content}
+                onComplete={() => handleAnimationComplete(messages.indexOf(message))}
               />
-                            <div className="absolute right-2 top-2 flex items-center gap-1">
-                                <FileUpload onFilesSelected={handleFilesSelected}>
-                                    <motion.button
-                                        whileHover={{scale: 1.05}}
-                                        whileTap={{scale: 0.95}}
-                                        className="p-2 rounded-full hover:bg-background/50 transition-colors"
-                                    >
-                                        <Paperclip className="w-4 h-4 text-muted-foreground"/>
-                                    </motion.button>
-                                </FileUpload>
-                                <motion.button
+            );
+        }
+
+        const parts = parseMessage(message.content);
+
+        return parts.map((part, index) => {
+            switch (part.type) {
+                case 'code':
+                    const codeContent = part.content as { language?: string; code: string };
+                    return (
+                      <CodeBlock
+                        key={index}
+                        code={codeContent.code}
+                        language={codeContent.language}
+                      />
+                    );
+                case 'poll':
+                    const pollContent = part.content as { question: string; options: { text: string; votes: number; }[] };
+                    return (
+                      <Poll
+                        key={index}
+                        question={pollContent.question}
+                        options={pollContent.options}
+                      />
+                    );
+                default:
+                    return <p key={index} className="leading-relaxed">{part.content}</p>;
+            }
+        });
+    };
+
+    return (
+      <motion.div
+        initial={{opacity: 0, y: 20}}
+        animate={{opacity: 1, y: 0}}
+        transition={{duration: 0.5}}
+        className="flex flex-col gap-6 max-w-4xl mx-auto"
+      >
+          <div className="flex justify-center">
+              <ProfessorAvatar isAnimating={isLoading || messages.some(m => m.isAnimating)}/>
+          </div>
+
+          <div className="bg-card rounded-lg shadow-lg p-4">
+              <div className="flex justify-end mb-2">
+                  <motion.button
+                    whileHover={{scale: 1.05}}
+                    whileTap={{scale: 0.95}}
+                    onClick={() => setVoiceEnabled(!voiceEnabled)}
+                    className="p-2 rounded-full hover:bg-muted transition-colors"
+                  >
+                      {voiceEnabled ? (
+                        <Volume2 className="w-5 h-5 text-primary"/>
+                      ) : (
+                        <VolumeX className="w-5 h-5 text-muted-foreground"/>
+                      )}
+                  </motion.button>
+              </div>
+
+              <div className="h-[400px] overflow-y-auto mb-4 scroll-smooth">
+                  <AnimatePresence mode="popLayout">
+                      {messages.map((msg, i) => (
+                        <motion.div
+                          key={i}
+                          initial={{opacity: 0, y: 20}}
+                          animate={{opacity: 1, y: 0}}
+                          exit={{opacity: 0, y: -20}}
+                          className={cn(
+                            'flex flex-col gap-2 p-4 rounded-2xl mb-4 shadow-sm relative',
+                            msg.role === 'user'
+                              ? 'bg-primary text-primary-foreground self-end ml-12 mr-2 rounded-br-sm'
+                              : 'bg-gradient-to-br from-card-foreground/5 to-card-foreground/10 backdrop-blur-sm self-start ml-2 mr-12 rounded-bl-sm'
+                          )}
+                        >
+                            {/* Triangle for chat bubble */}
+                            <div className={cn(
+                              'absolute bottom-0 w-4 h-4',
+                              msg.role === 'user'
+                                ? 'right-0 transform translate-y-1/2 bg-primary clip-triangle-right'
+                                : 'left-0 transform translate-y-1/2 bg-gradient-to-br from-card-foreground/5 to-card-foreground/10 clip-triangle-left'
+                            )}
+                            />
+
+                            {renderMessageContent(msg)}
+
+                            {msg.citations && (
+                              <div className="mt-2 text-sm text-muted-foreground">
+                                  <p className="font-semibold">Sources:</p>
+                                  <ul className="list-disc list-inside">
+                                      {msg.citations.map((citation, i) => (
+                                        <li key={i}>
+                                            <a
+                                              href={citation}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="hover:underline"
+                                            >
+                                                {citation}
+                                            </a>
+                                        </li>
+                                      ))}
+                                  </ul>
+                              </div>
+                            )}
+                        </motion.div>
+                      ))}
+                  </AnimatePresence>
+                  <div ref={bottomRef}/>
+              </div>
+
+              <div className="relative">
+                  <div className="flex gap-2">
+                      <div className="flex-1 relative">
+                            <textarea
+                              value={input}
+                              onChange={(e) => setInput(e.target.value)}
+                              placeholder="Ask your question..."
+                              className={cn(
+                                "w-full p-3 pr-24 rounded-lg bg-muted resize-none focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200",
+                                isExpanded ? "min-h-[150px]" : "min-h-[50px]"
+                              )}
+                            />
+                          <div className="absolute right-2 top-2 flex items-center gap-1">
+                              <FileUpload onFilesSelected={handleFilesSelected}>
+                                  <motion.button
                                     whileHover={{scale: 1.05}}
                                     whileTap={{scale: 0.95}}
-                                    onClick={() => setIsExpanded(!isExpanded)}
                                     className="p-2 rounded-full hover:bg-background/50 transition-colors"
-                                >
-                                    {isExpanded ? (
-                                        <ChevronDown className="w-4 h-4 text-muted-foreground"/>
-                                    ) : (
-                                        <ChevronUp className="w-4 h-4 text-muted-foreground"/>
-                                    )}
-                                </motion.button>
-                                <motion.button
-                                    whileHover={{scale: 1.05}}
-                                    whileTap={{scale: 0.95}}
-                                    onClick={handleSubmit}
-                                    disabled={isLoading || !input.trim()}
-                                    className={cn(
-                                        'p-2 rounded-full bg-primary text-primary-foreground',
-                                        'disabled:opacity-50 disabled:cursor-not-allowed',
-                                        'transition-colors hover:bg-primary/90'
-                                    )}
-                                >
-                                    <Send className="w-4 h-4"/>
-                                </motion.button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </motion.div>
+                                  >
+                                      <Paperclip className="w-4 h-4 text-muted-foreground"/>
+                                  </motion.button>
+                              </FileUpload>
+                              <motion.button
+                                whileHover={{scale: 1.05}}
+                                whileTap={{scale: 0.95}}
+                                onClick={() => setIsExpanded(!isExpanded)}
+                                className="p-2 rounded-full hover:bg-background/50 transition-colors"
+                              >
+                                  {isExpanded ? (
+                                    <ChevronDown className="w-4 h-4 text-muted-foreground"/>
+                                  ) : (
+                                    <ChevronUp className="w-4 h-4 text-muted-foreground"/>
+                                  )}
+                              </motion.button>
+                              <motion.button
+                                whileHover={{scale: 1.05}}
+                                whileTap={{scale: 0.95}}
+                                onClick={handleSubmit}
+                                disabled={isLoading || !input.trim()}
+                                className={cn(
+                                  'p-2 rounded-full bg-primary text-primary-foreground',
+                                  'disabled:opacity-50 disabled:cursor-not-allowed',
+                                  'transition-colors hover:bg-primary/90'
+                                )}
+                              >
+                                  <Send className="w-4 h-4"/>
+                              </motion.button>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </motion.div>
     );
 }

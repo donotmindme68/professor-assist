@@ -6,6 +6,7 @@ import {db} from "@db";
 import {files, messages, threads, users} from "@db/schema";
 import {eq} from "drizzle-orm";
 import OpenAI from "openai";
+import {SYSTEM_PROMPT} from "./constants.ts";
 
 const openai = new OpenAI();
 
@@ -100,10 +101,13 @@ export function registerRoutes(app: Express): Server {
             // Optionally send to OpenAI API
             if (useOpenAI) {
                 // Prepare messages for OpenAI
+
                 const openAIMessages = chatHistory.map(msg => ({
                     role: msg.role === 'user' ? 'user' : 'assistant',
                     content: msg.content,
                 }));
+
+                openAIMessages.unshift({role: 'system', content: SYSTEM_PROMPT})
 
                 // Send to OpenAI API
                 const completion = await openai.chat.completions.create({

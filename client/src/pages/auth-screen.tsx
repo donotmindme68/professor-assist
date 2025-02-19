@@ -45,7 +45,7 @@ export function AuthScreen({ onClick }: Props) {
                   <input
                     type="email"
                     placeholder="your.name@university.edu"
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors text-black"
                     required
                     pattern=".*\.edu$"
                     title="Please use a valid .edu email address"
@@ -63,7 +63,7 @@ export function AuthScreen({ onClick }: Props) {
                   <input
                     type="password"
                     placeholder="••••••••"
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 text-black focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
                     required
                     minLength={8}
                   />

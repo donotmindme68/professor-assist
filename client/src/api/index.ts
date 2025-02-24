@@ -1,8 +1,8 @@
 import axios, {AxiosError, AxiosResponse} from 'axios';
-import {Content, ContentCreator, ContentRegistration, Subscriber, Thread} from "@/types";
-import {API_BASE_URL} from "@/data/constants.ts";
+import {Content, ContentRegistration, Subscriber, Thread} from "types";
+import {API_BASE_URL} from "@/constants.ts";
+import {getUser} from "@/utils";
 
-// Define your base API URL;
 
 // Create an Axios instance with default configuration
 const apiClient = axios.create({
@@ -13,11 +13,33 @@ const apiClient = axios.create({
   withCredentials: true, // Include cookies for authentication
 });
 
+apiClient.interceptors.request.use((config) => {
+  const token = getUser()?.token
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => Promise.reject(error));
+
+// Response Interceptor (Optional: Handle Expired Token)
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response && error.response.status === 401) {
+      console.warn("Token expired, logging out...");
+      AuthAPI.logout()
+    }
+    return Promise.reject(error);
+  }
+);
+
 // Helper function to handle errors
 const handleError = (error: AxiosError) => {
   if (error.response) {
     // Server responded with a status code outside 2xx
-    throw new Error((error.response?.data as { error: string })?.error || 'Something went wrong');
+    throw new Error((error.response?.data as { error: string })?.error || (error.response?.data as {
+      message: string
+    })?.message || 'Something went wrong');
   } else if (error.request) {
     // Request was made but no response was received
     throw new Error('No response received from the server');
@@ -29,44 +51,39 @@ const handleError = (error: AxiosError) => {
 
 // Auth API
 export const AuthAPI = {
-  loginContentCreator: async (email: string, password: string): Promise<{ token: string }> => {
+  login: async (email: string, password: string): Promise<{ token: string }> => {
     try {
-      const response: AxiosResponse<{ token: string }> = await apiClient.post('/content-creators/login', {
+      const response: AxiosResponse<{ token: string, role: string, email: string }> = await apiClient.post('/login', {
         email,
         password,
       });
+
+      const user = response.data;
+      localStorage.setItem('user', JSON.stringify(user));
+
+
       return response.data;
     } catch (error) {
       handleError(error as AxiosError);
       throw error; // Re-throw the error after handling
     }
   },
-
-  loginSubscriber: async (email: string, password: string): Promise<{ token: string }> => {
-    try {
-      const response: AxiosResponse<{ token: string }> = await apiClient.post('/subscribers/login', {
-        email,
-        password,
-      });
-      return response.data;
-    } catch (error) {
-      handleError(error as AxiosError);
-      throw error;
-    }
-  },
+  logout: () => {
+    localStorage.removeItem("user"); // Clear user
+    window.location.href = "/login"; // Redirect to login page
+  }
 };
 
-// ContentCreator API
 export const ContentCreatorAPI = {
-  create: async (email: string, password: string): Promise<ContentCreator> => {
+  create: async (email: string, password: string): Promise<void> => {
     try {
-      const response: AxiosResponse<ContentCreator> = await apiClient.post('/content-creators/create', {
+      const response: AxiosResponse<void> = await apiClient.post('/register', {
         email,
         password,
+        role: 'content-creator',
       });
-      return response.data;
     } catch (error) {
-      handleError(error as AxiosError);
+      error instanceof AxiosError && handleError(error);
       throw error;
     }
   },
@@ -106,13 +123,13 @@ export const ContentCreatorAPI = {
 
 // Subscriber API
 export const SubscriberAPI = {
-  create: async (email: string, password: string): Promise<Subscriber> => {
+  create: async (email: string, password: string): Promise<void> => {
     try {
-      const response: AxiosResponse<Subscriber> = await apiClient.post('/subscribers/create', {
+      const response: AxiosResponse<Subscriber> = await apiClient.post('/register', {
         email,
         password,
+        role: 'subscriber'
       });
-      return response.data;
     } catch (error) {
       handleError(error as AxiosError);
       throw error;

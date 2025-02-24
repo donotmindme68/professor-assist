@@ -4,7 +4,7 @@ import { Send, Paperclip, Volume2, VolumeX, ChevronDown, ChevronUp } from 'lucid
 import { FileUpload } from './file-upload';
 import { ProfessorAvatar } from './professor-avatar';
 import { AnimatedText } from './animated-text';
-import { cn } from '../utils/utils.ts';
+import { cn } from '@/utils';
 import { CodeBlock } from './code-block';
 import { Poll } from './poll';
 import { parseMessage } from '../utils/message-parser.ts';

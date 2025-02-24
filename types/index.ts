@@ -1,30 +1,23 @@
-// Base User type (common properties for ContentCreator and Subscriber)
 export interface User {
-  id: number;
   email: string;
-  createdAt: string; // ISO date string
-  updatedAt: string; // ISO date string
+  role: 'content-creator' | 'subscriber';
+  name?: string;
+  token: string
 }
 
-// ContentCreator type
-export interface ContentCreator extends User {
-  passwordHash: string; // Only used server-side, not exposed to the client
-}
-
-// Subscriber type
-export interface Subscriber extends User {
-  passwordHash: string; // Only used server-side, not exposed to the client
-}
-
-// Content type
 export interface Content {
   id: number;
+  name: string;
   creatorId: number;
   isPublic: boolean;
   sharingId: string | null;
   ready: boolean;
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
+}
+
+export interface Subscriber {
+  email: string
 }
 
 // ContentRegistration type (relationship between Subscriber and Content)
@@ -39,6 +32,7 @@ export interface ContentRegistration {
 // Thread type
 export interface Thread {
   id: number;
+  name: string;
   subscriberId: number;
   contentId: number;
   messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;

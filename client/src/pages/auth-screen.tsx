@@ -1,7 +1,7 @@
 import React from 'react';
-import { useState } from 'react';
-import { Mail, Lock, ArrowRight, UserPlus, LogIn, Users, Loader2 } from 'lucide-react';
-import { useNavigate } from "react-router-dom";
+import {useState} from 'react';
+import {Mail, Lock, ArrowRight, UserPlus, LogIn, Users, Loader2} from 'lucide-react';
+import {useNavigate} from "react-router-dom";
 import {AuthAPI, ContentCreatorAPI, SubscriberAPI} from "@/api";
 
 type AuthScreen = 'login' | 'register';
@@ -11,7 +11,7 @@ interface Props {
   goToHome: () => void;
 }
 
-function AuthScreen({ goToHome }: Props) {
+function AuthScreen({goToHome}: Props) {
   const [screen, setScreen] = useState<AuthScreen>('login');
   const [userType, setUserType] = useState<UserType>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -29,9 +29,7 @@ function AuthScreen({ goToHome }: Props) {
 
     try {
       if (screen === 'login') {
-        // Call login API here
-        if (userType =='content-creator') await AuthAPI.loginContentCreator(email, password)
-        else await AuthAPI.loginSubscriber(email, password)
+        await AuthAPI.login(email, password)
         goToHome();
       } else {
         if (!userType) {
@@ -40,13 +38,13 @@ function AuthScreen({ goToHome }: Props) {
           return;
         }
         // Call register API here
-        if (userType =='content-creator') await ContentCreatorAPI.create(email, password)
+        if (userType == 'content-creator') await ContentCreatorAPI.create(email, password)
         else await SubscriberAPI.create(email, password)
         setScreen('login');
       }
     } catch (error) {
       console.error('Auth error:', error);
-      setError(screen === 'login'
+      setError(error instanceof Error ? error.message : screen === 'login'
         ? 'Invalid email or password. Please try again.'
         : 'Registration failed. Please try again.');
     } finally {
@@ -57,7 +55,8 @@ function AuthScreen({ goToHome }: Props) {
   return (
     <div className="flex items-center justify-center p-4 w-full h-full">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden transform hover:scale-[1.01] transition-transform duration-300">
+        <div
+          className="bg-white rounded-2xl shadow-xl overflow-hidden transform hover:scale-[1.01] transition-transform duration-300">
           {/* Header */}
           <div className="p-6 bg-gradient-to-r from-indigo-500 to-blue-600 text-white text-center">
             <h1 className="text-3xl font-bold mb-2">
@@ -99,7 +98,7 @@ function AuthScreen({ goToHome }: Props) {
                           : 'border-gray-300 text-gray-700 hover:border-indigo-500'
                       } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      <UserPlus className="w-5 h-5" />
+                      <UserPlus className="w-5 h-5"/>
                       Content Creator
                     </button>
                     <button
@@ -115,7 +114,7 @@ function AuthScreen({ goToHome }: Props) {
                           : 'border-gray-300 text-gray-700 hover:border-indigo-500'
                       } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      <Users className="w-5 h-5" />
+                      <Users className="w-5 h-5"/>
                       Subscriber
                     </button>
                   </div>
@@ -128,7 +127,7 @@ function AuthScreen({ goToHome }: Props) {
                   University Email
                 </label>
                 <div className="relative">
-                  <Mail className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                  <Mail className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2"/>
                   <input
                     name="email"
                     type="email"
@@ -151,7 +150,7 @@ function AuthScreen({ goToHome }: Props) {
                   Password
                 </label>
                 <div className="relative">
-                  <Lock className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                  <Lock className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2"/>
                   <input
                     name="password"
                     type="password"
@@ -177,18 +176,18 @@ function AuthScreen({ goToHome }: Props) {
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <Loader2 className="w-5 h-5 animate-spin"/>
                     {screen === 'login' ? 'Signing in...' : 'Creating account...'}
                   </>
                 ) : screen === 'login' ? (
                   <>
                     Sign In
-                    <LogIn className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    <LogIn className="w-5 h-5 group-hover:translate-x-1 transition-transform"/>
                   </>
                 ) : (
                   <>
                     Create Account
-                    <UserPlus className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    <UserPlus className="w-5 h-5 group-hover:translate-x-1 transition-transform"/>
                   </>
                 )}
               </button>
@@ -210,12 +209,12 @@ function AuthScreen({ goToHome }: Props) {
                   {screen === 'login' ? (
                     <>
                       New here? Create an account
-                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform"/>
                     </>
                   ) : (
                     <>
                       Already have an account? Sign in
-                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform"/>
                     </>
                   )}
                 </button>
@@ -237,5 +236,5 @@ function AuthScreen({ goToHome }: Props) {
 
 export default function AuthWrapper() {
   const navigate = useNavigate();
-  return <AuthScreen goToHome={() => navigate("/home")} />;
+  return <AuthScreen goToHome={() => navigate("/home")}/>;
 }

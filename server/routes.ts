@@ -2,12 +2,17 @@ import type {Express, Request, Response} from "express";
 import {createServer, type Server} from "http";
 import multer, {FileFilterCallback} from "multer";
 import path from "path";
-import {db} from "@db";
-import {contentCreators, contentRegistrations, contents, subscribers, threads} from "@db/schema";
-import {and, eq} from "drizzle-orm";
+import {ContentCreator, ContentRegistration, Content, Subscriber, Thread} from "@db/schema";
 import OpenAI from "openai";
-import {SYSTEM_PROMPT} from "./constants.ts";
-import {authenticateUser, authorizeContentCreator, authorizeSubscriber, generateToken} from "./auth";
+import {SYSTEM_PROMPT} from "./constants";
+import {
+  authenticateUser,
+  authorizeContentCreator,
+  authorizeSubscriber,
+  createContentCreator, createSubscriber, createUser,
+  generateToken,
+  loginUser
+} from "./auth";
 import bcrypt from 'bcrypt';
 import {v4 as uuidv4} from 'uuid';
 
@@ -18,6 +23,7 @@ declare module 'express' {
   interface Request {
     user?: {
       id: number;
+      role: string;
     };
   }
 }
@@ -53,79 +59,12 @@ const hashPassword = async (password: string): Promise<string> => {
   return await bcrypt.hash(password, saltRounds);
 };
 
-// Login views
-const AuthView = {
-  loginContentCreator: async (req: Request, res: Response) => {
-    try {
-      const {email, password} = req.body;
-      const [contentCreator] = await db.select()
-        .from(contentCreators)
-        .where(eq(contentCreators.email, email));
-
-      if (!contentCreator) {
-        return res.status(404).json({error: 'Content creator not found'});
-      }
-
-      const isValidPassword = await bcrypt.compare(password, contentCreator.passwordHash);
-      if (!isValidPassword) {
-        return res.status(401).json({error: 'Invalid password'});
-      }
-
-      // Generate and return a token (you can use JWT or any other method)
-      const token = generateToken(contentCreator.id);
-      res.json({token});
-    } catch (error) {
-      res.status(500).json({error: 'Failed to login'});
-    }
-  },
-
-  loginSubscriber: async (req: Request, res: Response) => {
-    try {
-      const {email, password} = req.body;
-      const [subscriber] = await db.select()
-        .from(subscribers)
-        .where(eq(subscribers.email, email));
-
-      if (!subscriber) {
-        return res.status(404).json({error: 'Subscriber not found'});
-      }
-
-      const isValidPassword = await bcrypt.compare(password, subscriber.passwordHash);
-      if (!isValidPassword) {
-        return res.status(401).json({error: 'Invalid password'});
-      }
-
-      // Generate and return a token (you can use JWT or any other method)
-      const token = generateToken(subscriber.id);
-      res.json({token});
-    } catch (error) {
-      res.status(500).json({error: 'Failed to login'});
-    }
-  },
-};
 
 // Updated ContentCreatorView and SubscriberView to hash passwords
 const ContentCreatorView = {
-  create: async (req: Request, res: Response) => {
-    try {
-      const passwordHash = await hashPassword(req.body.password);
-      const [contentCreator] = await db.insert(contentCreators)
-        .values({
-          email: req.body.email,
-          passwordHash,
-        })
-        .returning();
-      res.json(contentCreator);
-    } catch (error) {
-      res.status(500).json({error: 'Failed to create content creator'});
-    }
-  },
-
   listContents: [authorizeContentCreator, async (req: Request, res: Response) => {
     try {
-      const creatorContents = await db.select()
-        .from(contents)
-        .where(eq(contents.creatorId, req.user!.id));
+      const creatorContents = await Content.findAll({where: {creatorId: req.user!.id}});
       res.json(creatorContents);
     } catch (error) {
       res.status(500).json({error: 'Failed to fetch contents'});
@@ -135,9 +74,7 @@ const ContentCreatorView = {
   listSubscribers: [authorizeContentCreator, async (req: Request, res: Response) => {
     try {
       const contentId = parseInt(req.params.id);
-      const contentSubscribers = await db.select()
-        .from(contentRegistrations)
-        .where(eq(contentRegistrations.contentId, contentId));
+      const contentSubscribers = await ContentRegistration.findAll({where: {contentId}});
       res.json(contentSubscribers);
     } catch (error) {
       res.status(500).json({error: 'Failed to fetch subscribers'});
@@ -148,11 +85,12 @@ const ContentCreatorView = {
     try {
       const contentId = parseInt(req.params.contentId);
       const subscriberId = parseInt(req.params.subscriberId);
-      await db.delete(contentRegistrations)
-        .where(and(
-          eq(contentRegistrations.contentId, contentId),
-          eq(contentRegistrations.subscriberId, subscriberId)
-        ));
+      await ContentRegistration.destroy({
+        where: {
+          contentId,
+          subscriberId,
+        },
+      });
       res.json({message: 'Subscriber removed successfully'});
     } catch (error) {
       res.status(500).json({error: 'Failed to remove subscriber'});
@@ -161,26 +99,9 @@ const ContentCreatorView = {
 };
 
 const SubscriberView = {
-  create: async (req: Request, res: Response) => {
-    try {
-      const passwordHash = await hashPassword(req.body.password);
-      const [subscriber] = await db.insert(subscribers)
-        .values({
-          email: req.body.email,
-          passwordHash,
-        })
-        .returning();
-      res.json(subscriber);
-    } catch (error) {
-      res.status(500).json({error: 'Failed to create subscriber'});
-    }
-  },
-
   listSubscriptions: [authorizeSubscriber, async (req: Request, res: Response) => {
     try {
-      const subscriberSubscriptions = await db.select()
-        .from(contentRegistrations)
-        .where(eq(contentRegistrations.subscriberId, req.user!.id));
+      const subscriberSubscriptions = await ContentRegistration.findAll({where: {subscriberId: req.user!.id}});
       res.json(subscriberSubscriptions);
     } catch (error) {
       res.status(500).json({error: 'Failed to fetch subscriptions'});
@@ -192,14 +113,11 @@ const ContentView = {
   create: [authorizeContentCreator, upload.array('files', 5), async (req: Request, res: Response) => {
     try {
       const sharingId = req.body.isPublic ? uuidv4() : null;
-      const [content] = await db.insert(contents)
-        .values({
-          creatorId: req.user!.id,
-          // instructions: req.body.instructions,
-          isPublic: req.body.isPublic,
-          sharingId,
-        })
-        .returning();
+      const content = await Content.create({
+        creatorId: req.user!.id,
+        isPublic: req.body.isPublic,
+        sharingId,
+      });
       res.json(content);
     } catch (error) {
       res.status(500).json({error: 'Failed to create content'});
@@ -209,15 +127,19 @@ const ContentView = {
   update: [authorizeContentCreator, async (req: Request, res: Response) => {
     try {
       const contentId = parseInt(req.params.id);
-      const [content] = await db.update(contents)
-        .set({
-          isPublic: req.body.isPublic,
-          sharingId: req.body.sharingId,
-          ready: req.body.ready,
-        })
-        .where(eq(contents.id, contentId))
-        .returning();
-      res.json(content);
+      const [updated] = await Content.update({
+        isPublic: req.body.isPublic,
+        sharingId: req.body.sharingId,
+        ready: req.body.ready,
+      }, {
+        where: {id: contentId},
+      });
+      if (updated) {
+        const updatedContent = await Content.findByPk(contentId);
+        res.json(updatedContent);
+      } else {
+        res.status(404).json({error: 'Content not found'});
+      }
     } catch (error) {
       res.status(500).json({error: 'Failed to update content'});
     }
@@ -226,12 +148,10 @@ const ContentView = {
   register: [authorizeSubscriber, async (req: Request, res: Response) => {
     try {
       const contentId = parseInt(req.params.id);
-      const [registration] = await db.insert(contentRegistrations)
-        .values({
-          subscriberId: req.user!.id,
-          contentId: contentId,
-        })
-        .returning();
+      const registration = await ContentRegistration.create({
+        subscriberId: req.user!.id,
+        contentId,
+      });
       res.json(registration);
     } catch (error) {
       res.status(500).json({error: 'Failed to register for content'});
@@ -241,11 +161,12 @@ const ContentView = {
   unregister: [authorizeSubscriber, async (req: Request, res: Response) => {
     try {
       const contentId = parseInt(req.params.id);
-      await db.delete(contentRegistrations)
-        .where(and(
-          eq(contentRegistrations.subscriberId, req.user!.id),
-          eq(contentRegistrations.contentId, contentId)
-        ));
+      await ContentRegistration.destroy({
+        where: {
+          subscriberId: req.user!.id,
+          contentId,
+        },
+      });
       res.json({message: 'Unregistered successfully'});
     } catch (error) {
       res.status(500).json({error: 'Failed to unregister from content'});
@@ -256,14 +177,12 @@ const ContentView = {
 const ThreadView = {
   create: [authorizeSubscriber, async (req: Request, res: Response) => {
     try {
-      const [thread] = await db.insert(threads)
-        .values({
-          subscriberId: req.user!.id,
-          contentId: req.body.contentId,
-          messages: req.body.messages,
-          metaInfo: req.body.metaInfo,
-        })
-        .returning();
+      const thread = await Thread.create({
+        subscriberId: req.user!.id,
+        contentId: req.body.contentId,
+        messages: req.body.messages,
+        metaInfo: req.body.metaInfo,
+      });
 
       if (req.body.generateCompletion) {
         const completion = await openai.chat.completions.create({
@@ -282,23 +201,26 @@ const ThreadView = {
   update: [authorizeSubscriber, async (req: Request, res: Response) => {
     try {
       const threadId = parseInt(req.params.id);
-      const [thread] = await db.update(threads)
-        .set({
-          messages: req.body.messages,
-          metaInfo: req.body.metaInfo,
-        })
-        .where(eq(threads.id, threadId))
-        .returning();
+      const [updated] = await Thread.update({
+        messages: req.body.messages,
+        metaInfo: req.body.metaInfo,
+      }, {
+        where: {id: threadId},
+      });
 
-      if (req.body.generateCompletion) {
-        const completion = await openai.chat.completions.create({
-          messages: [{role: "system", content: SYSTEM_PROMPT}, ...req.body.messages],
-          model: "gpt-4",
-        });
-        thread.completion = completion.choices[0].message.content;
+      if (updated) {
+        const updatedThread = await Thread.findByPk(threadId);
+        if (req.body.generateCompletion) {
+          const completion = await openai.chat.completions.create({
+            messages: [{role: "system", content: SYSTEM_PROMPT}, ...req.body.messages],
+            model: "gpt-4",
+          });
+          updatedThread.completion = completion.choices[0].message.content;
+        }
+        res.json(updatedThread);
+      } else {
+        res.status(404).json({error: 'Thread not found'});
       }
-
-      res.json(thread);
     } catch (error) {
       res.status(500).json({error: 'Failed to update thread'});
     }
@@ -307,9 +229,7 @@ const ThreadView = {
   get: [authorizeSubscriber, async (req: Request, res: Response) => {
     try {
       const threadId = parseInt(req.params.id);
-      const [thread] = await db.select()
-        .from(threads)
-        .where(eq(threads.id, threadId));
+      const thread = await Thread.findByPk(threadId);
 
       if (req.body.generateCompletion) {
         const completion = await openai.chat.completions.create({
@@ -328,8 +248,7 @@ const ThreadView = {
   delete: [authorizeSubscriber, async (req: Request, res: Response) => {
     try {
       const threadId = parseInt(req.params.id);
-      await db.delete(threads)
-        .where(eq(threads.id, threadId));
+      await Thread.destroy({where: {id: threadId}});
       res.json({message: 'Thread deleted successfully'});
     } catch (error) {
       res.status(500).json({error: 'Failed to delete thread'});
@@ -341,9 +260,7 @@ const ThreadView = {
 const PublicContentView = {
   list: async (req: Request, res: Response) => {
     try {
-      const publicContents = await db.select()
-        .from(contents)
-        .where(eq(contents.isPublic, true));
+      const publicContents = await Content.findAll({where: {isPublic: true}});
       res.json(publicContents);
     } catch (error) {
       res.status(500).json({error: 'Failed to fetch public contents'});
@@ -354,16 +271,16 @@ const PublicContentView = {
 // Register routes
 export function registerRoutes(app: Express): Server {
   // Authentication middleware
+  app.post('/api/login', loginUser)
+  app.post('/api/register', createUser)
   app.use('/api/*path', authenticateUser);
 
   // ContentCreator routes
-  app.post('/api/content-creators/create', ContentCreatorView.create);
   app.get('/api/content-creators/contents/create', ContentCreatorView.listContents);
   app.get('/api/content-creators/contents/:id/subscribers', ContentCreatorView.listSubscribers);
   app.delete('/api/content-creators/contents/:contentId/subscribers/:subscriberId/remove', ContentCreatorView.removeSubscriber);
 
   // Subscriber routes
-  app.post('/api/subscribers/create', SubscriberView.create);
   app.get('/api/subscribers/subscriptions', SubscriberView.listSubscriptions);
 
   // Content routes

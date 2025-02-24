@@ -1,7 +1,12 @@
 import {motion} from "framer-motion";
 import {ChatBox} from "@/components/chat-box.tsx";
+import {getUser} from "@/utils";
+import {Navigate} from "react-router-dom";
 
 export default function Home() {
+  if (!getUser()){
+    return <Navigate to="/auth" replace />;
+  }
   return (
     <div className='w-full h-full flex items-center justify-center'>
     <div className='container px-4 py-8'>

@@ -1,38 +1,22 @@
-import {ChatBox} from './components/chat-box';
-import {ThemeToggle} from './components/theme-toggle';
-import {motion} from 'framer-motion';
-import {useState} from "react";
-import {AuthScreen} from "@/pages/auth-screen.tsx";
+import {BrowserRouter as Router, Navigate, Route, Routes} from "react-router-dom";
+import {ThemeToggle} from "./components/theme-toggle";
+import AuthWrapper from "@/pages/auth-screen.tsx";
+import React from "react";
+import Home from "@/pages/home.tsx";
+
 
 function App() {
-  const [loggedIn, setLoggedIn] = useState(false);
   return (
-    <div className="min-h-screen bg-background transition-colors duration-300">
-      <ThemeToggle/>
-
-      <div className="container mx-auto px-4 py-8">
-
-
-        {loggedIn && <>
-          <motion.header
-            className="text-center mb-8"
-            initial={{opacity: 0, y: -20}}
-            animate={{opacity: 1, y: 0}}
-            transition={{duration: 0.5}}
-          >
-            <h1
-              className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent animate-gradient">
-              AI Professor Assistant
-            </h1>
-            <p className="text-lg text-muted-foreground mt-2">
-              Ask questions and get expert responses from your AI professor
-            </p>
-          </motion.header>
-          <ChatBox/>
-        </>}
-        {!loggedIn && <AuthScreen onClick={() => setLoggedIn(true)}/>}
+    <Router>
+      <div className="w-[100vw] h-[100vh] bg-background transition-colors duration-300">
+        <ThemeToggle/>
+        <Routes>
+          <Route path="/" element={<Home/>}/>
+          <Route path="/auth" element={<AuthWrapper/>}/>
+          <Route path="*" element={<Navigate to="/"/>}/>
+        </Routes>
       </div>
-    </div>
+    </Router>
   );
 }
 

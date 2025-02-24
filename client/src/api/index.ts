@@ -1,0 +1,253 @@
+import axios, {AxiosError, AxiosResponse} from 'axios';
+import {Content, ContentCreator, ContentRegistration, Subscriber, Thread} from "@/types";
+import {API_BASE_URL} from "@/data/constants.ts";
+
+// Define your base API URL;
+
+// Create an Axios instance with default configuration
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: true, // Include cookies for authentication
+});
+
+// Helper function to handle errors
+const handleError = (error: AxiosError) => {
+  if (error.response) {
+    // Server responded with a status code outside 2xx
+    throw new Error((error.response?.data as { error: string })?.error || 'Something went wrong');
+  } else if (error.request) {
+    // Request was made but no response was received
+    throw new Error('No response received from the server');
+  } else {
+    // Something happened in setting up the request
+    throw new Error('Error setting up the request');
+  }
+};
+
+// Auth API
+export const AuthAPI = {
+  loginContentCreator: async (email: string, password: string): Promise<{ token: string }> => {
+    try {
+      const response: AxiosResponse<{ token: string }> = await apiClient.post('/content-creators/login', {
+        email,
+        password,
+      });
+      return response.data;
+    } catch (error) {
+      handleError(error as AxiosError);
+      throw error; // Re-throw the error after handling
+    }
+  },
+
+  loginSubscriber: async (email: string, password: string): Promise<{ token: string }> => {
+    try {
+      const response: AxiosResponse<{ token: string }> = await apiClient.post('/subscribers/login', {
+        email,
+        password,
+      });
+      return response.data;
+    } catch (error) {
+      handleError(error as AxiosError);
+      throw error;
+    }
+  },
+};
+
+// ContentCreator API
+export const ContentCreatorAPI = {
+  create: async (email: string, password: string): Promise<ContentCreator> => {
+    try {
+      const response: AxiosResponse<ContentCreator> = await apiClient.post('/content-creators/create', {
+        email,
+        password,
+      });
+      return response.data;
+    } catch (error) {
+      handleError(error as AxiosError);
+      throw error;
+    }
+  },
+
+  listContents: async (): Promise<Content[]> => {
+    try {
+      const response: AxiosResponse<Content[]> = await apiClient.get('/content-creators/contents/create');
+      return response.data;
+    } catch (error) {
+      handleError(error as AxiosError);
+      throw error;
+    }
+  },
+
+  listSubscribers: async (contentId: number): Promise<Subscriber[]> => {
+    try {
+      const response: AxiosResponse<Subscriber[]> = await apiClient.get(`/content-creators/contents/${contentId}/subscribers`);
+      return response.data;
+    } catch (error) {
+      handleError(error as AxiosError);
+      throw error;
+    }
+  },
+
+  removeSubscriber: async (contentId: number, subscriberId: number): Promise<{ message: string }> => {
+    try {
+      const response: AxiosResponse<{ message: string }> = await apiClient.delete(
+        `/content-creators/contents/${contentId}/subscribers/${subscriberId}/remove`
+      );
+      return response.data;
+    } catch (error) {
+      handleError(error as AxiosError);
+      throw error;
+    }
+  },
+};
+
+// Subscriber API
+export const SubscriberAPI = {
+  create: async (email: string, password: string): Promise<Subscriber> => {
+    try {
+      const response: AxiosResponse<Subscriber> = await apiClient.post('/subscribers/create', {
+        email,
+        password,
+      });
+      return response.data;
+    } catch (error) {
+      handleError(error as AxiosError);
+      throw error;
+    }
+  },
+
+  listSubscriptions: async (): Promise<ContentRegistration[]> => {
+    try {
+      const response: AxiosResponse<ContentRegistration[]> = await apiClient.get('/subscribers/subscriptions');
+      return response.data;
+    } catch (error) {
+      handleError(error as AxiosError);
+      throw error;
+    }
+  },
+};
+
+// Content API
+export const ContentAPI = {
+  create: async (isPublic: boolean, files: File[]): Promise<Content> => {
+    try {
+      const formData = new FormData();
+      formData.append('isPublic', JSON.stringify(isPublic));
+      files.forEach((file) => formData.append('files', file));
+
+      const response: AxiosResponse<Content> = await apiClient.post('/contents/create', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data;
+    } catch (error) {
+      handleError(error as AxiosError);
+      throw error;
+    }
+  },
+
+  update: async (contentId: number, isPublic: boolean, sharingId: string | null, ready: boolean): Promise<Content> => {
+    try {
+      const response: AxiosResponse<Content> = await apiClient.put(`/contents/${contentId}`, {
+        isPublic,
+        sharingId,
+        ready,
+      });
+      return response.data;
+    } catch (error) {
+      handleError(error as AxiosError);
+      throw error;
+    }
+  },
+
+  register: async (contentId: number): Promise<ContentRegistration> => {
+    try {
+      const response: AxiosResponse<ContentRegistration> = await apiClient.post(`/contents/${contentId}/register`);
+      return response.data;
+    } catch (error) {
+      handleError(error as AxiosError);
+      throw error;
+    }
+  },
+
+  unregister: async (contentId: number): Promise<{ message: string }> => {
+    try {
+      const response: AxiosResponse<{ message: string }> = await apiClient.delete(`/contents/${contentId}/unregister`);
+      return response.data;
+    } catch (error) {
+      handleError(error as AxiosError);
+      throw error;
+    }
+  },
+};
+
+// Thread API
+export const ThreadAPI = {
+  create: async (contentId: number, messages: any[], metaInfo: any, generateCompletion: boolean): Promise<Thread> => {
+    try {
+      const response: AxiosResponse<Thread> = await apiClient.post('/threads/create', {
+        contentId,
+        messages,
+        metaInfo,
+        generateCompletion,
+      });
+      return response.data;
+    } catch (error) {
+      handleError(error as AxiosError);
+      throw error;
+    }
+  },
+
+  update: async (threadId: number, messages: any[], metaInfo: any, generateCompletion: boolean): Promise<Thread> => {
+    try {
+      const response: AxiosResponse<Thread> = await apiClient.put(`/threads/${threadId}`, {
+        messages,
+        metaInfo,
+        generateCompletion,
+      });
+      return response.data;
+    } catch (error) {
+      handleError(error as AxiosError);
+      throw error;
+    }
+  },
+
+  get: async (threadId: number, generateCompletion: boolean): Promise<Thread> => {
+    try {
+      const response: AxiosResponse<Thread> = await apiClient.get(`/threads/${threadId}`, {
+        params: {generateCompletion},
+      });
+      return response.data;
+    } catch (error) {
+      handleError(error as AxiosError);
+      throw error;
+    }
+  },
+
+  delete: async (threadId: number): Promise<{ message: string }> => {
+    try {
+      const response: AxiosResponse<{ message: string }> = await apiClient.delete(`/threads/${threadId}`);
+      return response.data;
+    } catch (error) {
+      handleError(error as AxiosError);
+      throw error;
+    }
+  },
+};
+
+// Public Content API
+export const PublicContentAPI = {
+  list: async (): Promise<Content[]> => {
+    try {
+      const response: AxiosResponse<Content[]> = await apiClient.get('/public-contents');
+      return response.data;
+    } catch (error) {
+      handleError(error as AxiosError);
+      throw error;
+    }
+  },
+};

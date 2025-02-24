@@ -4,10 +4,10 @@ import { Send, Paperclip, Volume2, VolumeX, ChevronDown, ChevronUp } from 'lucid
 import { FileUpload } from './file-upload';
 import { ProfessorAvatar } from './professor-avatar';
 import { AnimatedText } from './animated-text';
-import { cn } from '../lib/utils';
+import { cn } from '../utils/utils.ts';
 import { CodeBlock } from './code-block';
 import { Poll } from './poll';
-import { parseMessage } from '../lib/message-parser';
+import { parseMessage } from '../utils/message-parser.ts';
 import { ThreadSwitcher } from './thread-switcher';
 
 interface Message {

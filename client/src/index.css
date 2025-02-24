@@ -38,3 +38,44 @@ body {
 .clip-triangle-left {
   clip-path: polygon(0 0, 100% 0, 100% 100%);
 }
+
+/* WebKit Browsers (Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+  width: 10px;  /* Set scrollbar width */
+  height: 10px; /* For horizontal scrollbars */
+}
+
+/* IE & Edge (Old Versions) - Hide default scrollbar */
+body {
+  -ms-overflow-style: none;  /* Hides scrollbar in IE/Edge */
+}
+
+body::-webkit-scrollbar {
+  display: block; /* Forces scrollbar visibility */
+}
+
+/* Scrollbar Thumb (Draggable part) */
+::-webkit-scrollbar-thumb {
+  background: rgba(120, 120, 120, 0.5); /* Soft gray */
+  border-radius: 10px;
+}
+
+/* Hover Effect */
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(120, 120, 120, 0.7);
+}
+
+/* Scrollbar Track (Background) */
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+
+::-webkit-scrollbar-thumb:horizontal {
+  visibility: hidden;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  visibility: visible;
+}
+

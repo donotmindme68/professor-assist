@@ -1,79 +1,109 @@
-import {integer, pgTable, serial, text, timestamp} from "drizzle-orm/pg-core";
-import {createInsertSchema, createSelectSchema} from "drizzle-zod";
-import {relations} from "drizzle-orm";
+import { integer, pgTable, serial, text, timestamp, jsonb, boolean } from "drizzle-orm/pg-core";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
+import { relations } from "drizzle-orm";
 
-export const users = pgTable("users", {
+// ContentCreator Table
+export const contentCreators = pgTable("content_creators", {
     id: serial("id").primaryKey(),
-    username: text("username").notNull().unique(),
     email: text("email").notNull().unique(),
+    passwordHash: text("password_hash").notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Subscriber Table
+export const subscribers = pgTable("subscribers", {
+    id: serial("id").primaryKey(),
+    email: text("email").notNull().unique(),
+    passwordHash: text("password_hash").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Content Table
+export const contents = pgTable("contents", {
+    id: serial("id").primaryKey(),
+    creatorId: integer("creator_id").references(() => contentCreators.id),
+    modelInfo: jsonb("model_info"),
+    isPublic: boolean("is_public").notNull(),
+    sharingId: text("sharing_id").unique(),
+    ready: boolean("ready").default(false).notNull(), // New field
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ContentRegistration Table
+export const contentRegistrations = pgTable("content_registrations", {
+    id: serial("id").primaryKey(),
+    subscriberId: integer("subscriber_id").references(() => subscribers.id),
+    contentId: integer("content_id").references(() => contents.id),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Thread Table
 export const threads = pgTable("threads", {
     id: serial("id").primaryKey(),
-    userId: integer("user_id").references(() => users.id),
-    subjectType: text("subject_type").notNull(),
+    subscriberId: integer("subscriber_id").references(() => subscribers.id),
+    contentId: integer("content_id").references(() => contents.id),
+    messages: jsonb("messages"),
+    metaInfo: jsonb("meta_info"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const messages = pgTable("messages", {
-    id: serial("id").primaryKey(),
-    threadId: integer("thread_id").references(() => threads.id),
-    content: text("content").notNull(),
-    role: text("role").notNull(), // 'user', 'system', 'assistant'
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+// Relations
+export const contentCreatorsRelations = relations(contentCreators, ({ many }) => ({
+    contents: many(contents),
+}));
 
-export const files = pgTable("files", {
-    id: serial("id").primaryKey(),
-    messageId: integer("message_id").references(() => messages.id),
-    filename: text("filename").notNull(),
-    contentType: text("content_type").notNull(),
-    path: text("path").notNull(),
-    createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
-export const usersRelations = relations(users, ({many}) => ({
+export const subscribersRelations = relations(subscribers, ({ many }) => ({
     threads: many(threads),
+    contentRegistrations: many(contentRegistrations),
 }));
 
-export const threadsRelations = relations(threads, ({one, many}) => ({
-    user: one(users, {
-        fields: [threads.userId],
-        references: [users.id],
+export const contentsRelations = relations(contents, ({ one, many }) => ({
+    creator: one(contentCreators, {
+        fields: [contents.creatorId],
+        references: [contentCreators.id],
     }),
-    messages: many(messages),
+    threads: many(threads),
+    contentRegistrations: many(contentRegistrations),
 }));
 
-export const messagesRelations = relations(messages, ({one, many}) => ({
-    thread: one(threads, {
-        fields: [messages.threadId],
-        references: [threads.id],
+export const contentRegistrationsRelations = relations(contentRegistrations, ({ one }) => ({
+    subscriber: one(subscribers, {
+        fields: [contentRegistrations.subscriberId],
+        references: [subscribers.id],
     }),
-    files: many(files),
-}));
-
-export const filesRelations = relations(files, ({one}) => ({
-    message: one(messages, {
-        fields: [files.messageId],
-        references: [messages.id],
+    content: one(contents, {
+        fields: [contentRegistrations.contentId],
+        references: [contents.id],
     }),
 }));
 
-export const insertUserSchema = createInsertSchema(users);
-export const selectUserSchema = createSelectSchema(users);
+export const threadsRelations = relations(threads, ({ one }) => ({
+    subscriber: one(subscribers, {
+        fields: [threads.subscriberId],
+        references: [subscribers.id],
+    }),
+    content: one(contents, {
+        fields: [threads.contentId],
+        references: [contents.id],
+    }),
+}));
+
+// Zod Schemas
+export const insertContentCreatorSchema = createInsertSchema(contentCreators);
+export const selectContentCreatorSchema = createSelectSchema(contentCreators);
+export const insertSubscriberSchema = createInsertSchema(subscribers);
+export const selectSubscriberSchema = createSelectSchema(subscribers);
+export const insertContentSchema = createInsertSchema(contents);
+export const selectContentSchema = createSelectSchema(contents);
 export const insertThreadSchema = createInsertSchema(threads);
 export const selectThreadSchema = createSelectSchema(threads);
-export const insertMessageSchema = createInsertSchema(messages);
-export const selectMessageSchema = createSelectSchema(messages);
-export const insertFileSchema = createInsertSchema(files);
-export const selectFileSchema = createSelectSchema(files);
 
-export type InsertUser = typeof users.$inferInsert;
-export type SelectUser = typeof users.$inferSelect;
+// Types
+export type InsertContentCreator = typeof contentCreators.$inferInsert;
+export type SelectContentCreator = typeof contentCreators.$inferSelect;
+export type InsertSubscriber = typeof subscribers.$inferInsert;
+export type SelectSubscriber = typeof subscribers.$inferSelect;
+export type InsertContent = typeof contents.$inferInsert;
+export type SelectContent = typeof contents.$inferSelect;
 export type InsertThread = typeof threads.$inferInsert;
 export type SelectThread = typeof threads.$inferSelect;
-export type InsertMessage = typeof messages.$inferInsert;
-export type SelectMessage = typeof messages.$inferSelect;
-export type InsertFile = typeof files.$inferInsert;
-export type SelectFile = typeof files.$inferSelect;

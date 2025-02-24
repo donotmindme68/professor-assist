@@ -1,3 +1,7 @@
+import 'config'
+
+export let TOKEN_EXPIRATION = '1hr';
+export let JWT_SECRET = process.env.JWT_SECRET!;
 export const SYSTEM_PROMPT = `You are a professsor AI assistant that helps students with their questions. You can also provide citations to back up your responses. 
 When responding, follow these formatting rules:
 

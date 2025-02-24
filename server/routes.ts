@@ -2,17 +2,10 @@ import type {Express, Request, Response} from "express";
 import {createServer, type Server} from "http";
 import multer, {FileFilterCallback} from "multer";
 import path from "path";
-import {ContentCreator, ContentRegistration, Content, Subscriber, Thread} from "@db/schema";
+import {Content, ContentRegistration, Thread} from "@db/schema";
 import OpenAI from "openai";
 import {SYSTEM_PROMPT} from "./constants";
-import {
-  authenticateUser,
-  authorizeContentCreator,
-  authorizeSubscriber,
-  createContentCreator, createSubscriber, createUser,
-  generateToken,
-  loginUser
-} from "./auth";
+import {authenticateUser, authorizeContentCreator, authorizeSubscriber, createUser, loginUser} from "./auth";
 import bcrypt from 'bcrypt';
 import {v4 as uuidv4} from 'uuid';
 
@@ -276,7 +269,7 @@ export function registerRoutes(app: Express): Server {
   app.use('/api/*path', authenticateUser);
 
   // ContentCreator routes
-  app.get('/api/content-creators/contents/create', ContentCreatorView.listContents);
+  app.get('/api/content-creators/contents', ContentCreatorView.listContents);
   app.get('/api/content-creators/contents/:id/subscribers', ContentCreatorView.listSubscribers);
   app.delete('/api/content-creators/contents/:contentId/subscribers/:subscriberId/remove', ContentCreatorView.removeSubscriber);
 

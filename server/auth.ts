@@ -117,7 +117,7 @@ export const authorizeSubscriber = async (req: Request, res: Response, next: Nex
 // Generate a JWT token
 export const generateToken = (userId: number, role: string): string => {
   return jwt.sign(
-    {id: userId, role}, // Payload (data to include in the token)
+    JSON.stringify({id: userId, role}), // Payload (data to include in the token)
     JWT_SECRET, // Secret key
   );
 };

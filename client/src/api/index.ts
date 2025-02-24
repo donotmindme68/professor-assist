@@ -90,7 +90,7 @@ export const ContentCreatorAPI = {
 
   listContents: async (): Promise<Content[]> => {
     try {
-      const response: AxiosResponse<Content[]> = await apiClient.get('/content-creators/contents/create');
+      const response: AxiosResponse<Content[]> = await apiClient.get('/content-creators/contents');
       return response.data;
     } catch (error) {
       handleError(error as AxiosError);

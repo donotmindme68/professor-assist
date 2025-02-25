@@ -204,9 +204,14 @@ export const ContentAPI = {
 
 // Thread API
 export const ThreadAPI = {
-  create: async (contentId: number, messages: any[], metaInfo: any, generateCompletion: boolean): Promise<Thread> => {
+  create: async (
+    contentId: number,
+    messages: Array<{ role: string; content: string }>,
+    metaInfo: Record<string, any>,
+    generateCompletion: boolean
+  ): Promise<Thread & { assistantResponse?: string }> => {
     try {
-      const response: AxiosResponse<Thread> = await apiClient.post('/threads/create', {
+      const response: AxiosResponse<Thread & { assistantResponse?: string }> = await apiClient.post('/threads/create', {
         contentId,
         messages,
         metaInfo,
@@ -219,12 +224,19 @@ export const ThreadAPI = {
     }
   },
 
-  update: async (threadId: number, messages: any[], metaInfo: any, generateCompletion: boolean): Promise<Thread> => {
+  update: async (
+    threadId: number,
+    messages: Array<{ role: string; content: string }>,
+    metaInfo: Record<string, any>,
+    generateCompletion: boolean,
+    append: boolean = false // Default to false if not provided
+  ): Promise<Thread & { assistantResponse?: string }> => {
     try {
-      const response: AxiosResponse<Thread> = await apiClient.put(`/threads/${threadId}`, {
+      const response: AxiosResponse<Thread & { assistantResponse?: string }> = await apiClient.put(`/threads/${threadId}`, {
         messages,
         metaInfo,
         generateCompletion,
+        append,
       });
       return response.data;
     } catch (error) {

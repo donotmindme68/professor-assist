@@ -57,7 +57,8 @@ const hashPassword = async (password: string): Promise<string> => {
 const ContentCreatorView = {
   listContents: [authorizeContentCreator, async (req: Request, res: Response) => {
     try {
-      const creatorContents = await Content.findAll({where: {creatorId: req.user!.id}});
+      // const creatorContents = await Content.findAll({where: {creatorId: req.user!.id}});
+      const creatorContents = await Content.findAll();//todo: fix
       res.json(creatorContents);
     } catch (error) {
       res.status(500).json({error: 'Failed to fetch contents'});
@@ -170,52 +171,99 @@ const ContentView = {
 const ThreadView = {
   create: [authorizeSubscriber, async (req: Request, res: Response) => {
     try {
-      const thread = await Thread.create({
-        subscriberId: req.user!.id,
-        contentId: req.body.contentId,
-        messages: req.body.messages,
-        metaInfo: req.body.metaInfo,
-      });
+      // Create the thread with the provided data
+      // const thread = await Thread.create({
+      //   subscriberId: req.user!.id, // Assuming req.user is populated by authentication middleware
+      //   contentId: req.body.contentId,
+      //   messages: req.body.messages,
+      //   metaInfo: req.body.metaInfo,
+      // }); //todo:fix
 
+      let assistantResponse = null;
+
+      // Generate completion if requested
       if (req.body.generateCompletion) {
         const completion = await openai.chat.completions.create({
-          messages: [{role: "system", content: SYSTEM_PROMPT}, ...req.body.messages],
-          model: "gpt-4",
+          model: "gpt-4o-mini", // Use the gpt-4o model
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT }, // System prompt
+            ...req.body.messages, // User-provided messages
+          ],
         });
-        thread.completion = completion.choices[0].message.content;
+
+        // Save the completion result to the thread
+        assistantResponse = completion.choices[0].message.content;
+        // await thread.save(); // Persist the updated thread with completion
       }
 
-      res.json(thread);
+      // Return the created thread and assistant response
+      res.status(201).json({
+        // ...thread.dataValues, // Use .dataValues to access attributes
+        assistantResponse, // Include the assistant response
+      });
     } catch (error) {
-      res.status(500).json({error: 'Failed to create thread'});
+      console.error('Error creating thread:', error); // Log the error for debugging
+      res.status(500).json({ error: 'Failed to create thread' });
     }
   }],
 
   update: [authorizeSubscriber, async (req: Request, res: Response) => {
     try {
       const threadId = parseInt(req.params.id);
-      const [updated] = await Thread.update({
-        messages: req.body.messages,
-        metaInfo: req.body.metaInfo,
-      }, {
-        where: {id: threadId},
-      });
+      const { messages, metaInfo, generateCompletion, append } = req.body;
+
+      // Fetch the existing thread
+      const thread = (await Thread.findByPk(threadId))?.dataValues;
+      if (!thread) {
+        return res.status(404).json({ error: 'Thread not found' });
+      }
+
+      // Update messages: append if `append` is true, otherwise replace
+      const updatedMessages = append
+        ? [...thread.messages, ...messages] // Append new messages to existing ones
+        : messages; // Replace existing messages
+
+      // Update the thread
+      const [updated] = await Thread.update(
+        {
+          messages: updatedMessages,
+          metaInfo: metaInfo || thread.metaInfo, // Preserve existing metaInfo if not provided
+        },
+        {
+          where: { id: threadId },
+        }
+      );
+
+      let assistantResponse = null;
 
       if (updated) {
         const updatedThread = await Thread.findByPk(threadId);
-        if (req.body.generateCompletion) {
+
+        // Generate completion if requested
+        if (generateCompletion) {
           const completion = await openai.chat.completions.create({
-            messages: [{role: "system", content: SYSTEM_PROMPT}, ...req.body.messages],
-            model: "gpt-4",
+            model: "gpt-4o-mini", // Use the gpt-4o model
+            messages: [
+              { role: "system", content: SYSTEM_PROMPT },
+              ...updatedMessages, // Use the updated messages
+            ],
           });
-          updatedThread.completion = completion.choices[0].message.content;
+
+          // Save the completion result to the thread
+          assistantResponse = completion.choices[0].message.content;
         }
-        res.json(updatedThread);
+
+        // Return the updated thread and assistant response
+        res.json({
+          ...updatedThread!.dataValues, // Use .dataValues to access attributes
+          assistantResponse, // Include the assistant response
+        });
       } else {
-        res.status(404).json({error: 'Thread not found'});
+        res.status(404).json({ error: 'Thread not found or not updated' });
       }
     } catch (error) {
-      res.status(500).json({error: 'Failed to update thread'});
+      console.error('Error updating thread:', error);
+      res.status(500).json({ error: 'Failed to update thread' });
     }
   }],
 
@@ -284,9 +332,9 @@ export function registerRoutes(app: Express): Server {
 
   // Thread routes
   app.post('/api/threads/create', ThreadView.create);
-  app.put('/api/threads/:id', ThreadView.update);
+  app.put('/api/threads/:id/update', ThreadView.update);
   app.get('/api/threads/:id', ThreadView.get);
-  app.delete('/api/threads/:id', ThreadView.delete);
+  app.delete('/api/threads/:id/delete', ThreadView.delete);
 
   // Public content routes
   app.get('/api/public-contents', PublicContentView.list);

@@ -4,12 +4,14 @@ import React from "react";
 import DashboardPage from "@/pages/DashboardPage.tsx";
 import NotFound from "@/pages/NotFound.tsx";
 import WelcomePage from "@/pages/WelcomePage.tsx";
+import {LoadPreferences} from "@/components/LoadPreferences.tsx";
 
 
 function App() {
   return (
     <Router>
       <div className="w-[100vw] h-[100vh]">
+        <LoadPreferences/>
         <Routes>
           <Route path="/dashboard" element={<DashboardPage/>}/>
           <Route path="/auth" element={<AuthWrapper/>}/>

@@ -234,5 +234,5 @@ function AuthScreen({ goToHome }: Props) {
 
 export default function AuthWrapper() {
   const navigate = useNavigate();
-  return <AuthScreen goToHome={() => navigate('/home')} />;
+  return <AuthScreen goToHome={() => navigate('/dashboard')} />;
 }

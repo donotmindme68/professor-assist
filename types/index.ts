@@ -1,3 +1,5 @@
+import {Model} from "sequelize";
+
 export interface User {
   email: string;
   role: 'content-creator' | 'subscriber';
@@ -9,11 +11,11 @@ export interface Content {
   id: number;
   name: string;
   creatorId: number;
+  modelInfo: object;
   isPublic: boolean;
-  sharingId: string | null;
+  sharingId: string;
   ready: boolean;
-  createdAt: string; // ISO date string
-  updatedAt: string; // ISO date string
+  createdAt: string;
 }
 
 export interface Subscriber {
@@ -29,19 +31,14 @@ export interface ContentRegistration {
   updatedAt: string; // ISO date string
 }
 
-// Thread type
 export interface Thread {
   id: number;
   name: string;
   subscriberId: number;
   contentId: number;
-  messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
-  metaInfo: Record<string, any>; // Flexible metadata
-  completion?: string; // Optional completion message from OpenAI
-  createdAt: string; // ISO date string
-  updatedAt: string; // ISO date string
+  messages: object;
+  metaInfo: object;
 }
-
 // Response types for API calls
 export interface AuthResponse {
   token: string;

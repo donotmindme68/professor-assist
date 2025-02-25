@@ -1,18 +1,17 @@
-import React from 'react';
-import {useState} from 'react';
-import {Mail, Lock, ArrowRight, UserPlus, LogIn, Users, Loader2} from 'lucide-react';
-import {useNavigate} from "react-router-dom";
-import {AuthAPI, ContentCreatorAPI, SubscriberAPI} from "@/api";
+import React, { useState } from 'react';
+import { Mail, Lock, ArrowRight, UserPlus, LogIn, Users, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { AuthAPI, ContentCreatorAPI, SubscriberAPI } from '@/api';
 
-type AuthScreen = 'login' | 'register';
+type AuthPage = 'login' | 'register';
 type UserType = 'content-creator' | 'subscriber' | null;
 
 interface Props {
   goToHome: () => void;
 }
 
-function AuthScreen({goToHome}: Props) {
-  const [screen, setScreen] = useState<AuthScreen>('login');
+function AuthScreen({ goToHome }: Props) {
+  const [screen, setScreen] = useState<AuthPage>('login');
   const [userType, setUserType] = useState<UserType>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +28,7 @@ function AuthScreen({goToHome}: Props) {
 
     try {
       if (screen === 'login') {
-        await AuthAPI.login(email, password)
+        await AuthAPI.login(email, password);
         goToHome();
       } else {
         if (!userType) {
@@ -37,42 +36,43 @@ function AuthScreen({goToHome}: Props) {
           setIsLoading(false);
           return;
         }
-        // Call register API here
-        if (userType == 'content-creator') await ContentCreatorAPI.create(email, password)
-        else await SubscriberAPI.create(email, password)
+        if (userType === 'content-creator') await ContentCreatorAPI.create(email, password);
+        else await SubscriberAPI.create(email, password);
         setScreen('login');
       }
     } catch (error) {
-      console.error('Auth error:', error);
-      setError(error instanceof Error ? error.message : screen === 'login'
-        ? 'Invalid email or password. Please try again.'
-        : 'Registration failed. Please try again.');
+      console.error('AuthPage error:', error);
+      setError(
+        error instanceof Error
+          ? error.message
+          : screen === 'login'
+            ? 'Invalid email or password. Please try again.'
+            : 'Registration failed. Please try again.'
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex items-center justify-center p-4 w-full h-full">
+    <div className="flex items-center justify-center p-4 w-full h-full bg-gray-50 dark:bg-gray-900">
       <div className="w-full max-w-md">
-        <div
-          className="bg-background rounded-2xl shadow-xl overflow-hidden transform hover:scale-[1.01] transition-transform duration-300">
+        {/* Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden transform hover:scale-[1.01] transition-transform duration-300">
           {/* Header */}
           <div className="p-6 bg-gradient-to-r from-indigo-500 to-blue-600 text-white text-center">
             <h1 className="text-3xl font-bold mb-2">
               {screen === 'login' ? 'Welcome Back' : 'Join Us'}
             </h1>
-            <p className="text-indigo-100">
-              {screen === 'login'
-                ? 'Sign in to your account'
-                : 'Create your account'}
+            <p className="text-indigo-100 dark:text-indigo-200">
+              {screen === 'login' ? 'Sign in to your account' : 'Create your account'}
             </p>
           </div>
 
           {/* Form */}
           <div className="p-6">
             {error && (
-              <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+              <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900 dark:bg-opacity-20 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300 text-sm">
                 {error}
               </div>
             )}
@@ -81,7 +81,7 @@ function AuthScreen({goToHome}: Props) {
               {/* User Type Selection (Only for Register) */}
               {screen === 'register' && (
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700 block">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block">
                     I want to join as
                   </label>
                   <div className="grid grid-cols-2 gap-4">
@@ -95,10 +95,10 @@ function AuthScreen({goToHome}: Props) {
                       className={`p-3 rounded-lg border flex items-center justify-center gap-2 transition-colors ${
                         userType === 'content-creator'
                           ? 'bg-indigo-600 text-white border-indigo-600'
-                          : 'border-gray-300 text-gray-700 hover:border-indigo-500'
+                          : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-indigo-500 dark:hover:border-indigo-500'
                       } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      <UserPlus className="w-5 h-5"/>
+                      <UserPlus className="w-5 h-5" />
                       Content Creator
                     </button>
                     <button
@@ -111,10 +111,10 @@ function AuthScreen({goToHome}: Props) {
                       className={`p-3 rounded-lg border flex items-center justify-center gap-2 transition-colors ${
                         userType === 'subscriber'
                           ? 'bg-indigo-600 text-white border-indigo-600'
-                          : 'border-gray-300 text-gray-700 hover:border-indigo-500'
+                          : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-indigo-500 dark:hover:border-indigo-500'
                       } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      <Users className="w-5 h-5"/>
+                      <Users className="w-5 h-5" />
                       Subscriber
                     </button>
                   </div>
@@ -123,18 +123,18 @@ function AuthScreen({goToHome}: Props) {
 
               {/* Email Field */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700 block">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block">
                   University Email
                 </label>
                 <div className="relative">
-                  <Mail className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2"/>
+                  <Mail className="w-5 h-5 text-gray-400 dark:text-gray-500 absolute left-3 top-1/2 transform -translate-y-1/2" />
                   <input
                     name="email"
                     type="email"
                     placeholder="your_id@uaeu.ac.ae"
                     disabled={isLoading}
-                    className={`w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors text-black ${
-                      isLoading ? 'bg-gray-50 cursor-not-allowed' : 'bg-background'
+                    className={`w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors text-black dark:text-white dark:bg-gray-700 ${
+                      isLoading ? 'bg-gray-50 dark:bg-gray-600 cursor-not-allowed' : 'bg-white dark:bg-gray-700'
                     }`}
                     required
                     pattern=".*@uaeu\.ac\.ae$"
@@ -146,18 +146,18 @@ function AuthScreen({goToHome}: Props) {
 
               {/* Password Field */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700 block">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block">
                   Password
                 </label>
                 <div className="relative">
-                  <Lock className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2"/>
+                  <Lock className="w-5 h-5 text-gray-400 dark:text-gray-500 absolute left-3 top-1/2 transform -translate-y-1/2" />
                   <input
                     name="password"
                     type="password"
                     placeholder="••••••••"
                     disabled={isLoading}
-                    className={`w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 text-black focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
-                      isLoading ? 'bg-gray-50 cursor-not-allowed' : 'bg-background'
+                    className={`w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors text-black dark:text-white dark:bg-gray-700 ${
+                      isLoading ? 'bg-gray-50 dark:bg-gray-600 cursor-not-allowed' : 'bg-white dark:bg-gray-700'
                     }`}
                     required
                     minLength={8}
@@ -170,24 +170,24 @@ function AuthScreen({goToHome}: Props) {
               <button
                 type="submit"
                 disabled={isLoading}
-                className={`w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-200 transition-colors duration-300 flex items-center justify-center gap-2 group ${
+                className={`w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-200 dark:focus:ring-indigo-800 transition-colors duration-300 flex items-center justify-center gap-2 group ${
                   isLoading ? 'cursor-not-allowed opacity-80' : ''
                 }`}
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin"/>
+                    <Loader2 className="w-5 h-5 animate-spin" />
                     {screen === 'login' ? 'Signing in...' : 'Creating account...'}
                   </>
                 ) : screen === 'login' ? (
                   <>
                     Sign In
-                    <LogIn className="w-5 h-5 group-hover:translate-x-1 transition-transform"/>
+                    <LogIn className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </>
                 ) : (
                   <>
                     Create Account
-                    <UserPlus className="w-5 h-5 group-hover:translate-x-1 transition-transform"/>
+                    <UserPlus className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </>
                 )}
               </button>
@@ -202,19 +202,19 @@ function AuthScreen({goToHome}: Props) {
                     setUserType(null);
                     setError(null);
                   }}
-                  className={`text-indigo-600 hover:text-indigo-800 text-sm font-medium inline-flex items-center gap-1 group ${
+                  className={`text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 text-sm font-medium inline-flex items-center gap-1 group ${
                     isLoading ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
                 >
                   {screen === 'login' ? (
                     <>
                       New here? Create an account
-                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform"/>
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </>
                   ) : (
                     <>
                       Already have an account? Sign in
-                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform"/>
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </>
                   )}
                 </button>
@@ -224,10 +224,8 @@ function AuthScreen({goToHome}: Props) {
         </div>
 
         {/* Additional Info */}
-        <div className="text-center mt-6 text-gray-600">
-          <p className="text-sm">
-            Protected by industry standard encryption
-          </p>
+        <div className="text-center mt-6 text-gray-600 dark:text-gray-400">
+          <p className="text-sm">Protected by industry standard encryption</p>
         </div>
       </div>
     </div>
@@ -236,5 +234,5 @@ function AuthScreen({goToHome}: Props) {
 
 export default function AuthWrapper() {
   const navigate = useNavigate();
-  return <AuthScreen goToHome={() => navigate("/home")}/>;
+  return <AuthScreen goToHome={() => navigate('/home')} />;
 }

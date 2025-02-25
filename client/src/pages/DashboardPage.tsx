@@ -10,7 +10,7 @@ import { CreateContentDialog } from '@/components/creator/CreateContentDialog';
 import { Content, ContentRegistration } from 'types';
 import { ContentAPI, ContentCreatorAPI, SubscriberAPI } from '@/api';
 
-export default function Home() {
+export default function DashboardPage() {
   const user = getUser();
   const [selectedContent, setSelectedContent] = useState<Content | null>(null);
   const [registrations, setRegistrations] = useState<ContentRegistration[]>([]);

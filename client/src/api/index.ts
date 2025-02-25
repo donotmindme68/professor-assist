@@ -49,7 +49,7 @@ const handleError = (error: AxiosError) => {
   }
 };
 
-// Auth API
+// AuthPage API
 export const AuthAPI = {
   login: async (email: string, password: string): Promise<{ token: string }> => {
     try {

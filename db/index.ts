@@ -24,8 +24,8 @@ if (process.env.DATABASE_MODE === 'cloud') {
     protocol: 'postgres',
     dialectOptions: {
       ssl: {
-        require: true,
-        rejectUnauthorized: false
+        require: false,
+        rejectUnauthorized: false // Disables SSL certificate verification
       }
     }
   });

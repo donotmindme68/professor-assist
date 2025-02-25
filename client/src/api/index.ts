@@ -70,7 +70,7 @@ export const AuthAPI = {
   },
   logout: () => {
     localStorage.removeItem("user"); // Clear user
-    window.location.href = "/login"; // Redirect to login page
+    window.location.href = "/auth"; // Redirect to login page
   }
 };
 

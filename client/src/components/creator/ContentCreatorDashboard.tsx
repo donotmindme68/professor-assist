@@ -128,7 +128,7 @@ export const ContentCreatorDashboard = () => {
                     : 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900'
                 }`}
               >
-                <Filter size={20} className={filterPublic === null ? 'text-gray-400' : 'text-indigo-500'} />
+                <Filter size={20} className={filterPublic === null ? 'text-gray-400 dark:text-gray-200' : 'text-indigo-500'} />
                 {filterPublic === null ? 'All' : filterPublic ? 'Public' : 'Private'}
               </motion.button>
             </div>
@@ -145,7 +145,7 @@ export const ContentCreatorDashboard = () => {
               <select
                 value={readyFilter}
                 onChange={(e) => setReadyFilter(e.target.value as ReadyFilter)}
-                className="px-4 py-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                className="px-4 py-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all dark:text-gray-200"
               >
                 <option value="all">All Status</option>
                 <option value="ready">Ready</option>

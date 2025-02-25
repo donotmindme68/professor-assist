@@ -74,7 +74,7 @@ export const loginUser = async (req: Request, res: Response) => {
     const role = contentCreator ? 'content-creator' : 'subscriber'
 
     // Generate a token with the user's ID and role
-    const token = generateToken(contentCreator ? contentCreator.id : subscriber!.id, role);
+    const token = generateToken(contentCreator ? contentCreator.dataValues.id : subscriber?.dataValues.id, role);
     res.json({token, role, email: user.email, name: user?.name});
   } catch (error) {
     res.status(500).json({message: 'Failed to login'});
@@ -117,7 +117,7 @@ export const authorizeSubscriber = async (req: Request, res: Response, next: Nex
 // Generate a JWT token
 export const generateToken = (userId: number, role: string): string => {
   return jwt.sign(
-    JSON.stringify({id: userId, role}), // Payload (data to include in the token)
+    {id: userId, role}, // Payload (data to include in the token)
     JWT_SECRET, // Secret key
   );
 };

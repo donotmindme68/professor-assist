@@ -7,7 +7,7 @@ import { ContentSearch } from '@/components/subscriber/ContentSearch';
 import { SubscribedContent } from '@/components/subscriber/SubscribedContent';
 import { ContentList } from '@/components/creator/ContentList';
 import { CreateContentDialog } from '@/components/creator/CreateContentDialog';
-import { Content, ContentRegistration } from '@/types';
+import { Content, ContentRegistration } from 'types';
 import { ContentAPI, ContentCreatorAPI, SubscriberAPI } from '@/api';
 
 export default function Home() {
@@ -30,7 +30,7 @@ export default function Home() {
       }
     };
 
-    fetchData();
+    fetchData().catch(); //todo: fix
   }, [user]);
 
   if (!user) {
@@ -55,7 +55,7 @@ export default function Home() {
   };
 
   return (
-    <div className='w-full min-h-screen bg-gray-50'>
+    <div className='w-full min-h-screen'>
       <div className='container mx-auto px-4 py-8'>
         <motion.header
           className="text-center mb-8"

@@ -4,7 +4,7 @@ import { sequelize } from './index';
 // User Model
 export class User extends Model {
     public id!: number;
-    public name?: string
+    public name!: string;
     public email!: string;
     public passwordHash!: string;
     public createdAt!: Date;

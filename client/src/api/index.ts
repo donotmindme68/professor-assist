@@ -53,7 +53,7 @@ const handleError = (error: AxiosError) => {
 export const AuthAPI = {
   login: async (email: string, password: string): Promise<{ token: string }> => {
     try {
-      const response: AxiosResponse<{ token: string, role: string, email: string }> = await apiClient.post('/login', {
+      const response: AxiosResponse<{ token: string, role: string, email: string }> = await apiClient.post('/auth', {
         email,
         password,
       });

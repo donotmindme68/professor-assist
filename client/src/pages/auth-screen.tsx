@@ -56,7 +56,7 @@ function AuthScreen({goToHome}: Props) {
     <div className="flex items-center justify-center p-4 w-full h-full">
       <div className="w-full max-w-md">
         <div
-          className="bg-white rounded-2xl shadow-xl overflow-hidden transform hover:scale-[1.01] transition-transform duration-300">
+          className="bg-background rounded-2xl shadow-xl overflow-hidden transform hover:scale-[1.01] transition-transform duration-300">
           {/* Header */}
           <div className="p-6 bg-gradient-to-r from-indigo-500 to-blue-600 text-white text-center">
             <h1 className="text-3xl font-bold mb-2">
@@ -134,7 +134,7 @@ function AuthScreen({goToHome}: Props) {
                     placeholder="your_id@uaeu.ac.ae"
                     disabled={isLoading}
                     className={`w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors text-black ${
-                      isLoading ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'
+                      isLoading ? 'bg-gray-50 cursor-not-allowed' : 'bg-background'
                     }`}
                     required
                     pattern=".*@uaeu\.ac\.ae$"
@@ -157,7 +157,7 @@ function AuthScreen({goToHome}: Props) {
                     placeholder="••••••••"
                     disabled={isLoading}
                     className={`w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 text-black focus:ring-indigo-500 focus:border-indigo-500 transition-colors ${
-                      isLoading ? 'bg-gray-50 cursor-not-allowed' : 'bg-white'
+                      isLoading ? 'bg-gray-50 cursor-not-allowed' : 'bg-background'
                     }`}
                     required
                     minLength={8}

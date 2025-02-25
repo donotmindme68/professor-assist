@@ -43,7 +43,7 @@ export function ContentSearch({ onSelect }: { onSelect: (content: Content) => vo
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="absolute z-10 w-full mt-2 bg-white rounded-lg shadow-lg max-h-60 overflow-auto"
+            className="absolute z-10 w-full mt-2 bg-background rounded-lg shadow-lg max-h-60 overflow-auto"
           >
             {filteredContents.map((content) => (
               <motion.button

@@ -24,7 +24,7 @@ export function Poll({ question, options }: PollProps) {
   };
 
   return (
-    <div className="bg-white/5 backdrop-blur-sm rounded-lg p-4 my-4">
+    <div className="bg-background/5 backdrop-blur-sm rounded-lg p-4 my-4">
       <h3 className="text-lg font-semibold mb-4">{question}</h3>
       <div className="space-y-3">
         {options.map((option, index) => {

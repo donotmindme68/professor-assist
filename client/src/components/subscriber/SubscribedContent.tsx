@@ -50,7 +50,7 @@ export function SubscribedContent({ registrations, onUnsubscribe, onContentSelec
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="bg-white rounded-lg shadow p-4 relative"
+              className="bg-background rounded-lg shadow p-4 relative"
             >
               <div className="flex justify-between items-center">
                 <button
@@ -71,7 +71,7 @@ export function SubscribedContent({ registrations, onUnsubscribe, onContentSelec
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="absolute inset-0 bg-white/90 rounded-lg flex items-center justify-center"
+                  className="absolute inset-0 bg-background/90 rounded-lg flex items-center justify-center"
                 >
                   <div className="text-center space-y-2">
                     <p>Are you sure you want to unsubscribe?</p>

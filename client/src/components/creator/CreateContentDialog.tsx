@@ -33,7 +33,7 @@ export function CreateContentDialog({ isOpen, onClose, onSubmit }: Props) {
             initial={{ scale: 0.95 }}
             animate={{ scale: 1 }}
             exit={{ scale: 0.95 }}
-            className="bg-white rounded-lg shadow-xl max-w-md w-full"
+            className="bg-background rounded-lg shadow-xl max-w-md w-full"
           >
             <div className="flex justify-between items-center p-4 border-b">
               <h2 className="text-xl font-semibold">Create New Content</h2>

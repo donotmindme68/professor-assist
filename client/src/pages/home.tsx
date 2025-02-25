@@ -70,7 +70,7 @@ export default function Home() {
 
         {selectedContent ? (
           <div className="flex gap-4">
-            <div className="w-64 bg-white rounded-lg shadow p-4">
+            <div className="w-64 bg-background rounded-lg shadow p-4">
               {/* Thread selector sidebar - placeholder */}
               <h2 className="font-semibold mb-4">Threads</h2>
             </div>

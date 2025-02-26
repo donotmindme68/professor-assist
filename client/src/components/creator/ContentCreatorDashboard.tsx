@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import { Content } from 'types';
 import ContentDetails from './ContentDetails';
 import {ContentCreatorAPI} from "@/api";
+import {NavBar} from "@/components/NavBar.tsx";
 
 type SortOption = 'newest' | 'oldest' | 'name';
 type ReadyFilter = 'all' | 'ready' | 'draft';
@@ -69,6 +70,8 @@ export const ContentCreatorDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-900 dark:to-indigo-950 p-6">
+      <NavBar/>
+      <div className='h-16'/>
       <LayoutGroup>
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-8">

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Mail, Lock, ArrowRight, UserPlus, LogIn, Users, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AuthAPI, ContentCreatorAPI, SubscriberAPI } from '@/api';
+import ThemeToggle from "@/components/ThemeToggle.tsx";
 
 type AuthPage = 'login' | 'register';
 type UserType = 'content-creator' | 'subscriber' | null;
@@ -56,6 +57,7 @@ function AuthScreen({ goToHome }: Props) {
 
   return (
     <div className="flex items-center justify-center p-4 w-full h-full bg-gray-50 dark:bg-gray-900">
+      <ThemeToggle/>
       <div className="w-full max-w-md">
         {/* Card */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden transform hover:scale-[1.01] transition-transform duration-300">

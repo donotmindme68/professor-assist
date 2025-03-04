@@ -26,11 +26,11 @@ export const createUser = async (req: Request, res: Response) => {
     });
 
     if (role === 'content-creator') {
-      const creator = await ContentCreator.create({ userId: user.id });
+      const creator = (await ContentCreator.create({ userId: user.id }))?.dataValues;
       const token = generateToken(creator.id, role);
       res.status(201).json({ token, role, email: user.email, name: user.name });
     } else if (role === 'subscriber') {
-      const subscriber = await Subscriber.create({ userId: user.id });
+      const subscriber = (await Subscriber.create({ userId: user.id }))?.dataValues;
       const token = generateToken(subscriber.id, role);
       res.status(201).json({ token, role, email: user.email, name: user.name });
     } else {
@@ -50,7 +50,7 @@ export const loginUser = async (req: Request, res: Response) => {
   }
 
   try {
-    const user = await User.findOne({ where: { email } });
+    const user = (await User.findOne({ where: { email } }))?.dataValues;
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -60,8 +60,8 @@ export const loginUser = async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Invalid password' });
     }
 
-    const contentCreator = await ContentCreator.findOne({ where: { userId: user.id } });
-    const subscriber = await Subscriber.findOne({ where: { userId: user.id } });
+    const contentCreator = (await ContentCreator.findOne({ where: { userId: user.id } }))?.dataValues;
+    const subscriber = (await Subscriber.findOne({ where: { userId: user.id } }))?.dataValues;
 
     if (!contentCreator && !subscriber) {
       return res.status(500).json({ error: 'User role not found' });

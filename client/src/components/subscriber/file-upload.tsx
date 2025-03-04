@@ -1,6 +1,6 @@
 import { useCallback, ReactNode } from 'react';
 import { motion } from 'framer-motion';
-import { cn } from '../utils';
+import { cn } from '../../utils';
 
 interface FileUploadProps {
   onFilesSelected: (files: File[]) => void;

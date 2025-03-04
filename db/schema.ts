@@ -41,7 +41,6 @@ User.init({
     timestamps: false,
 });
 
-
 // ContentCreator Model
 export class ContentCreator extends Model {
     public id!: number;
@@ -100,6 +99,7 @@ Subscriber.init({
 export class Content extends Model {
     public id!: number;
     public name!: string;
+    public description!: string | null;
     public creatorId!: number;
     public modelInfo!: object;
     public isPublic!: boolean;
@@ -119,6 +119,10 @@ Content.init({
         allowNull: false,
         unique: false,
     },
+    description: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+    },
     creatorId: {
         type: DataTypes.INTEGER,
         references: {
@@ -128,10 +132,12 @@ Content.init({
     },
     modelInfo: {
         type: DataTypes.JSONB,
+        defaultValue: {},
     },
     isPublic: {
         type: DataTypes.BOOLEAN,
         allowNull: false,
+        defaultValue: false,
     },
     sharingId: {
         type: DataTypes.STRING,
@@ -158,6 +164,8 @@ export class ContentRegistration extends Model {
     public id!: number;
     public subscriberId!: number;
     public contentId!: number;
+    public createdAt!: Date;
+    public updatedAt!: Date;
 }
 
 ContentRegistration.init({
@@ -180,10 +188,20 @@ ContentRegistration.init({
             key: 'id',
         },
     },
+    createdAt: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
+        allowNull: false,
+    },
+    updatedAt: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
+        allowNull: false,
+    },
 }, {
     sequelize,
     modelName: 'content_registration',
-    timestamps: false,
+    timestamps: true,
 });
 
 // Thread Model
@@ -194,6 +212,7 @@ export class Thread extends Model {
     public contentId!: number;
     public messages!: object;
     public metaInfo!: object;
+    public createdAt!: Date;
 }
 
 Thread.init({
@@ -223,9 +242,16 @@ Thread.init({
     },
     messages: {
         type: DataTypes.JSONB,
+        defaultValue: [],
     },
     metaInfo: {
         type: DataTypes.JSONB,
+        defaultValue: {},
+    },
+    createdAt: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW,
+        allowNull: false,
     },
 }, {
     sequelize,
@@ -253,3 +279,33 @@ ContentRegistration.belongsTo(Content, { foreignKey: 'contentId' });
 
 Content.hasMany(Thread, { foreignKey: 'contentId' });
 Thread.belongsTo(Content, { foreignKey: 'contentId' });
+
+export type UserAttributes = {
+    id: number;
+    name: string | null;
+    email: string;
+    passwordHash: string;
+    createdAt: Date;
+};
+
+export type ContentAttributes = {
+    id: number;
+    name: string;
+    description: string | null;
+    creatorId: number;
+    modelInfo: object;
+    isPublic: boolean;
+    sharingId: string | null;
+    ready: boolean;
+    createdAt: Date;
+};
+
+export type ThreadAttributes = {
+    id: number;
+    name: string;
+    subscriberId: number;
+    contentId: number;
+    messages: object;
+    metaInfo: object;
+    createdAt: Date;
+};

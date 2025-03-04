@@ -5,7 +5,7 @@ import {
   Trash2, RefreshCw, UserMinus, Search, AlertCircle, Check, XCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { Content } from '../types';
+import { Content } from 'types';
 
 interface ContentDetailsProps {
   content: Content;

@@ -1,7 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
-import { ProfessorAvatar } from './professor-avatar';
+import { ProfessorAvatar } from './professor-avatar.tsx';
 
 interface Thread {
   id: number;

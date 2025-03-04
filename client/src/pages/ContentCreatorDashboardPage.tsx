@@ -2,15 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
 import { Search, Plus, Filter, Lock, Globe, RefreshCw, BookOpen, Users, Calendar, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
-import { ContentCreatorContent } from 'types';
-import ContentDetails from './ContentDetails';
+import { ContentCreatorContent } from '../../../types';
+import ContentDetails from '../components/creator/ContentDetails.tsx';
 import {ContentCreatorAPI} from "@/api";
 import {NavBar} from "@/components/NavBar.tsx";
 
 type SortOption = 'newest' | 'oldest' | 'name';
 type ReadyFilter = 'all' | 'ready' | 'draft';
 
-export const ContentCreatorDashboard = () => {
+export const ContentCreatorDashboardPage = () => {
   const [contents, setContents] = useState<ContentCreatorContent[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedContent, setSelectedContent] = useState<ContentCreatorContent | null>(null);
@@ -272,4 +272,4 @@ export const ContentCreatorDashboard = () => {
   );
 };
 
-export default ContentCreatorDashboard;
+export default ContentCreatorDashboardPage;

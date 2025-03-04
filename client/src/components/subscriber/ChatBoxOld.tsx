@@ -1,15 +1,15 @@
 import {useEffect, useRef, useState} from 'react';
 import {AnimatePresence, motion} from 'framer-motion';
 import {ChevronDown, ChevronUp, Paperclip, Send, Volume2, VolumeX} from 'lucide-react';
-import {FileUpload} from './file-upload';
-import {ProfessorAvatar} from './professor-avatar';
-import {AnimatedText} from './animated-text';
+import {FileUpload} from './file-upload.tsx';
+import {ProfessorAvatar} from './professor-avatar.tsx';
+import {AnimatedText} from './animated-text.tsx';
 import {cn} from '@/utils';
-import {CodeBlock} from './code-block';
-import {Poll} from './poll';
-import {parseMessage} from '../utils/message-parser.ts';
+import {CodeBlock} from './code-block.tsx';
+import {Poll} from './poll.tsx';
+import {parseMessage} from '../../utils/message-parser.ts';
 import {ThreadAPI} from "@/api";
-import {Message} from "types";
+import {Message} from "../../../../types";
 
 interface Props {
   messages: Message[];

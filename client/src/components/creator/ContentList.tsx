@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Users, Share2, ChevronDown, ChevronUp, Trash2, Globe } from 'lucide-react';
-import { Content, Subscriber } from '@/types';
+import { Content, Subscriber } from 'types';
 import { ContentAPI, ContentCreatorAPI } from '@/api';
 import { motion, AnimatePresence } from 'framer-motion';
 

@@ -1,8 +1,8 @@
 import React from 'react';
 import {Navigate} from 'react-router-dom';
 import {getUser} from '@/utils';
-import ContentCreatorDashboard from "@/components/creator/ContentCreatorDashboard.tsx";
-import {ChatPage} from "@/pages/ChatPage.tsx";
+import ContentCreatorDashboardPage from "@/pages/ContentCreatorDashboardPage.tsx";
+import SubscriberDashboardPage from "@/pages/SubscriberDashboardPage.tsx";
 
 export default function DashboardPage() {
   const user = getUser();
@@ -12,7 +12,7 @@ export default function DashboardPage() {
     return <Navigate to="/auth" replace/>;
   }
   if (user.role === 'content-creator')
-    return <ContentCreatorDashboard/>
+    return <ContentCreatorDashboardPage/>
 
-  else return <ChatPage/>
+  else return <SubscriberDashboardPage/>
 }

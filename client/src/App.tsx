@@ -5,6 +5,7 @@ import DashboardPage from "@/pages/DashboardPage.tsx";
 import NotFound from "@/pages/NotFound.tsx";
 import WelcomePage from "@/pages/WelcomePage.tsx";
 import {LoadPreferences} from "@/components/LoadPreferences.tsx";
+import {ContentsPage} from "@/pages/ContentsPage.tsx";
 
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
         <Routes>
           <Route path="/dashboard" element={<DashboardPage/>}/>
           <Route path="/auth" element={<AuthWrapper/>}/>
+          <Route path="/contents/:contentId" element={<ContentsPage/>}/>
           <Route path="/" element={<WelcomePage/>}/>
           <Route path="*" element={<NotFound/>}/>
         </Routes>

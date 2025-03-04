@@ -433,7 +433,7 @@ export function registerRoutes(app: Express): Server {
   // Authentication routes
   app.post('/api/login', loginUser);
   app.post('/api/register', createUser);
-  app.use('/api/*', authenticateUser);
+  app.use('/api/*path', authenticateUser);
 
   // User profile route
   app.get('/api/user/profile', async (req: Request, res: Response) => {

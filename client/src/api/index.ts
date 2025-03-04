@@ -1,5 +1,5 @@
 import axios, {AxiosError, AxiosResponse} from 'axios';
-import {Content, ContentRegistration, Subscriber, Thread} from "types";
+import {ContentCreatorContent, ContentRegistration, Subscriber, Thread} from "types";
 import {API_BASE_URL} from "@/constants.ts";
 import {getUser} from "@/utils";
 
@@ -88,9 +88,9 @@ export const ContentCreatorAPI = {
     }
   },
 
-  listContents: async (): Promise<Content[]> => {
+  listContents: async (): Promise<ContentCreatorContent[]> => {
     try {
-      const response: AxiosResponse<Content[]> = await apiClient.get('/content-creators/contents');
+      const response: AxiosResponse<ContentCreatorContent[]> = await apiClient.get('/content-creators/contents');
       return response.data;
     } catch (error) {
       handleError(error as AxiosError);
@@ -149,13 +149,13 @@ export const SubscriberAPI = {
 
 // Content API
 export const ContentAPI = {
-  create: async (isPublic: boolean, files: File[]): Promise<Content> => {
+  create: async (isPublic: boolean, files: File[]): Promise<ContentCreatorContent> => {
     try {
       const formData = new FormData();
       formData.append('isPublic', JSON.stringify(isPublic));
       files.forEach((file) => formData.append('files', file));
 
-      const response: AxiosResponse<Content> = await apiClient.post('/contents/create', formData, {
+      const response: AxiosResponse<ContentCreatorContent> = await apiClient.post('/contents/create', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -167,9 +167,9 @@ export const ContentAPI = {
     }
   },
 
-  update: async (contentId: number, isPublic: boolean, sharingId: string | null, ready: boolean): Promise<Content> => {
+  update: async (contentId: number, isPublic: boolean, sharingId: string | null, ready: boolean): Promise<ContentCreatorContent> => {
     try {
-      const response: AxiosResponse<Content> = await apiClient.put(`/contents/${contentId}`, {
+      const response: AxiosResponse<ContentCreatorContent> = await apiClient.put(`/contents/${contentId}`, {
         isPublic,
         sharingId,
         ready,
@@ -270,9 +270,9 @@ export const ThreadAPI = {
 
 // Public Content API
 export const PublicContentAPI = {
-  list: async (): Promise<Content[]> => {
+  list: async (): Promise<ContentCreatorContent[]> => {
     try {
-      const response: AxiosResponse<Content[]> = await apiClient.get('/public-contents');
+      const response: AxiosResponse<ContentCreatorContent[]> = await apiClient.get('/public-contents');
       return response.data;
     } catch (error) {
       handleError(error as AxiosError);

@@ -1,4 +1,4 @@
-import {ChatBox} from "@/components/ChatBox.tsx";
+import {ChatBox} from "@/components/subscriber/ChatBox.tsx";
 import ThemeToggle from "@/components/ThemeToggle.tsx";
 import {NavBar} from "@/components/NavBar.tsx";
 

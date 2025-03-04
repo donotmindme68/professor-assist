@@ -8,81 +8,61 @@ import {cn} from '@/utils';
 import {CodeBlock} from './code-block';
 import {Poll} from './poll';
 import {parseMessage} from '../utils/message-parser.ts';
-import {ThreadSwitcher} from './thread-switcher';
 import {ThreadAPI} from "@/api";
+import {Message} from "types";
 
-interface Message {
-  role: 'user' | 'assistant';
-  content: string;
-  citations?: string[];
-  isAnimating?: boolean;
+interface Props {
+  messages: Message[];
+  onUserMessage: (message: string) => void;
+  onUserInterrupt: () => void;
+  onUserRetry: () => void;
+  isStreaming: boolean;
+  isConnecting: boolean;
+  connectionError?: string;
+  retryConnect?: () => void;
+  onOpen?: () => void;
 }
 
-interface Thread {
-  id: number;
-  professorId: number;
-  subjectType: string;
-  lastMessage?: string;
-}
-
-export function ChatBox() {
-  const [messages, setMessages] = useState<Message[]>([]);
+export function ChatBox({
+                          messages,
+                          onUserMessage,
+                          onUserInterrupt,
+                          onUserRetry,
+                          isStreaming = false,
+                          isConnecting = false,
+                          connectionError,
+                          retryConnect,
+                          onOpen,
+                        }: Props) {
   const [input, setInput] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [threadId, setThreadId] = useState<number | null>(null);
-  const [threads, setThreads] = useState<Thread[]>([]);
   const [isThreadSwitcherOpen, setIsThreadSwitcherOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const synth = window.speechSynthesis;
-
-  useEffect(() => {
-    const fetchThreads = async () => {
-      try {
-        const response = await fetch('/api/threads');
-        const data = await response.json();
-
-        if (data.length === 0) {
-          const newThread = await createThread();
-          setThreads([newThread]);
-          setThreadId(newThread.id);
-        } else {
-          setThreads(data);
-          setThreadId(data[0].id);
-        }
-      } catch (error) {
-        console.error('Failed to fetch threads:', error);
-        const newThread = await createThread();
-        setThreads([newThread]);
-        setThreadId(newThread.id);
-      }
-    };
-
-    fetchThreads();
-  }, []);
-
-  const createThread = async () => {
-    return {id: 1} //todo:fix
-    try {
-      const response = await fetch('/api/threads', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: 1,
-          subjectType: 'General',
-          professorId: Math.floor(Math.random() * 3),
-        }),
-      });
-      return await response.json();
-    } catch (error) {
-      console.error('Failed to create thread:', error);
-      throw error;
-    }
-  };
+  //
+  // const createThread = async () => {
+  //   return {id: 1} //todo:fix
+  //   try {
+  //     const response = await fetch('/api/threads', {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify({
+  //         userId: 1,
+  //         subjectType: 'General',
+  //         professorId: Math.floor(Math.random() * 3),
+  //       }),
+  //     });
+  //     return await response.json();
+  //   } catch (error) {
+  //     console.error('Failed to create thread:', error);
+  //     throw error;
+  //   }
+  // };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({behavior: 'smooth'});

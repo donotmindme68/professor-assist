@@ -71,9 +71,11 @@
     "react-dropzone": "^14.3.5",
     "react-hook-form": "^7.53.1",
     "react-icons": "^5.4.0",
+    "react-markdown": "^10.0.1",
     "react-resizable-panels": "^2.1.4",
     "react-router-dom": "^7.2.0",
     "recharts": "^2.13.0",
+    "remark-gfm": "^4.0.1",
     "sequelize": "^6.37.5",
     "speak-tts": "^2.0.8",
     "tailwind-merge": "^2.5.4",
@@ -111,5 +113,10 @@
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"
+  },
+  "pnpm": {
+    "overrides": {
+      "ylib": "link:../../../../../home/yoni_ash/.local/share/pnpm/global/5/node_modules/ylib"
+    }
   }
 }

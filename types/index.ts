@@ -7,15 +7,22 @@ export interface User {
   token: string
 }
 
-export interface Content {
+export interface ContentCreatorContent {
   id: number;
-  name: string;
-  creatorId: number;
+  name: string;``
+  description?: string;
   modelInfo: object;
   isPublic: boolean;
   sharingId: string;
   ready: boolean;
   createdAt: string;
+}
+
+export interface SubscriberContent {
+  id: number;
+  name: string;
+  description?: string;
+  isPublic: boolean;
 }
 
 export interface Subscriber {
@@ -31,12 +38,18 @@ export interface ContentRegistration {
   updatedAt: string; // ISO date string
 }
 
+export interface Message{
+  role: 'assistant' | 'user'
+  content: string
+  error?: string
+}
+
 export interface Thread {
   id: number;
   name: string;
   subscriberId: number;
   contentId: number;
-  messages: object;
+  messages: Message[] ;
   metaInfo: object;
 }
 // Response types for API calls

@@ -14,5 +14,5 @@ export default function DashboardPage() {
   if (user.role === 'content-creator')
     return <ContentCreatorDashboard/>
 
-  else return <ChatPage/>//todo: fix
+  else return <ChatPage/>
 }

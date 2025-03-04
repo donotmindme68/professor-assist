@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { Search, Filter, X } from 'lucide-react';
-import { Content, ContentRegistration } from '@/types';
+import { ContentCreatorContent, ContentRegistration } from 'types';
 import { ContentAPI } from '@/api';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface Props {
   registrations: ContentRegistration[];
   onUnsubscribe: (contentId: number) => void;
-  onContentSelect: (content: Content) => void;
+  onContentSelect: (content: ContentCreatorContent) => void;
 }
 
 export function SubscribedContent({ registrations, onUnsubscribe, onContentSelect }: Props) {

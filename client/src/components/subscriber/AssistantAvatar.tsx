@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import sadtaker from '../../assets/sadtalker.mp4'
 
 interface AssistantAvatarProps {
   isAnimating?: boolean;
@@ -12,9 +13,14 @@ const AssistantAvatar: React.FC<AssistantAvatarProps> = ({ isAnimating = false }
       animate={isAnimating ? { scale: [1, 1.05, 1] } : {}}
       transition={{ repeat: Infinity, duration: 2 }}
     >
-      <div className="w-24 h-24 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center shadow-md overflow-hidden">
-        <img 
-          src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=200&q=80" 
+      <div className="w-36 h-36 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center shadow-md overflow-hidden">
+        {/*<img */}
+        {/*  src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=200&q=80" */}
+        {/*  alt="AI Assistant"*/}
+        {/*  className="w-full h-full object-cover"*/}
+        {/*/>*/}
+        <video autoPlay={true} loop={true} muted={true} playsInline={true}
+          src={sadtaker}
           alt="AI Assistant"
           className="w-full h-full object-cover"
         />

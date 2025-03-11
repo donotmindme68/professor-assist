@@ -248,7 +248,7 @@ const ContentView = {
     }
   }],
 
-  remove: [authorizeContentCreator, async (req: Request, res: Response) => {
+  delete: [authorizeContentCreator, async (req: Request, res: Response) => {
     try {
       const contentId = parseInt(req.params.id);
       const result = await Content.destroy({
@@ -547,7 +547,8 @@ export function registerRoutes(app: Express): Server {
   // ContentCreator routes
   app.get('/api/content-creators/contents', ContentCreatorView.listContents);
   app.get('/api/content-creators/contents/:id/subscribers', ContentCreatorView.listSubscribers);
-  app.delete('/api/content-creators/contents/:contentId/subscribers/:subscriberId/remove', ContentCreatorView.removeSubscriber);
+  app.delete('/api/content-creators/contents/:contentId/subscribers/:subscriberId/remove', ContentCreatorView.removeSubscriber); //todo: fix
+  app.put('/api/content-creators/contents/:contentId/subscribers/:subscriberId/remove', ContentCreatorView.removeSubscriber);
 
   // Subscriber routes
   app.get('/api/subscribers/subscriptions', SubscriberView.listSubscriptions);
@@ -558,9 +559,12 @@ export function registerRoutes(app: Express): Server {
   app.put('/api/contents/:id/set_public', ContentView.setPublic);
   app.put('/api/contents/:id/rotate_link', ContentView.rotateLink);
   app.put('/api/contents/:id/remove_link', ContentView.removeLink);
-  app.put('/api/contents/:id/delete', ContentView.removeLink);
+  app.put('/api/contents/:id/delete', ContentView.delete);
+  app.delete('/api/contents/:id/delete', ContentView.delete);
+  app.put('/api/contents/:id/delete', ContentView.delete);
   app.post('/api/contents/:id/register', ContentView.register);
   app.delete('/api/contents/:id/unregister', ContentView.unregister);
+  app.put('/api/contents/:id/unregister', ContentView.unregister);
   app.get('/api/contents/by-invite', ContentView.getByInviteLink);
 
   // Thread routes
@@ -568,6 +572,7 @@ export function registerRoutes(app: Express): Server {
   app.put('/api/threads/:id/update', ThreadView.update);
   app.get('/api/threads/:id', ThreadView.get);
   app.delete('/api/threads/:id/delete', ThreadView.delete);
+  app.put('/api/threads/:id/delete', ThreadView.delete);
   app.get('/api/threads/by-content/:contentId', ThreadView.listByContent);
   app.patch('/api/threads/:id/name', async (req: Request, res: Response) => {
     try {

@@ -106,6 +106,7 @@ export class Content extends Model {
     public sharingId!: string;
     public ready!: boolean;
     public createdAt!: Date;
+    public error!: string | null
 }
 
 Content.init({
@@ -120,6 +121,10 @@ Content.init({
         unique: false,
     },
     description: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+    },
+    error: {
         type: DataTypes.TEXT,
         allowNull: true,
     },

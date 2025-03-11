@@ -1,32 +1,62 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence, LayoutGroup } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Plus, Filter, Lock, Globe, RefreshCw, BookOpen, Users, Calendar, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
-import { ContentCreatorContent } from '../../../types';
-import ContentDetails from '../components/creator/ContentDetails.tsx';
-import {ContentCreatorAPI} from "@/api";
-import {NavBar} from "@/components/NavBar.tsx";
+import { ContentCreatorContent } from '../types';
+import { ContentCreatorAPI } from '../api';
+import { NavBar } from '../components/NavBar';
+import CreateContentDialog from '../components/creator/CreateContentDialog';
+import ContentCardSkeleton from "@/components/creator/ContentCardSkeleton.tsx";
+import ContentCard from "@/components/creator/ContentCard.tsx";
 
 type SortOption = 'newest' | 'oldest' | 'name';
 type ReadyFilter = 'all' | 'ready' | 'draft';
 
 export const ContentCreatorDashboardPage = () => {
+  const navigate = useNavigate();
   const [contents, setContents] = useState<ContentCreatorContent[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedContent, setSelectedContent] = useState<ContentCreatorContent | null>(null);
   const [filterPublic, setFilterPublic] = useState<boolean | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [readyFilter, setReadyFilter] = useState<ReadyFilter>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   const fetchContents = async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await ContentCreatorAPI.listContents()
+      const data = await ContentCreatorAPI.listContents();
       setContents(data);
+      // await new Promise((resolve)=> setTimeout(resolve, 1000))
+      // // Mock data for development
+      // setContents([
+      //   {
+      //     id: 1,
+      //     name: "React Fundamentals",
+      //     description: "Learn the basics of React",
+      //     creatorId: 1,
+      //     modelInfo: {},
+      //     isPublic: true,
+      //     sharingId: "abc123",
+      //     ready: true,
+      //     createdAt: new Date().toISOString()
+      //   },
+      //   {
+      //     id: 2,
+      //     name: "Advanced TypeScript",
+      //     description: "Deep dive into TypeScript",
+      //     creatorId: 1,
+      //     modelInfo: {},
+      //     isPublic: false,
+      //     sharingId: null,
+      //     ready: false,
+      //     createdAt: new Date(Date.now() - 86400000).toISOString()
+      //   }
+      // ]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -38,6 +68,10 @@ export const ContentCreatorDashboardPage = () => {
     setIsRefreshing(true);
     await fetchContents();
     setIsRefreshing(false);
+  };
+
+  const handleCreateSuccess = (newContent: ContentCreatorContent) => {
+    setContents(prev => [newContent, ...prev]);
   };
 
   useEffect(() => {
@@ -68,206 +102,131 @@ export const ContentCreatorDashboardPage = () => {
       }
     });
 
+  const handleContentClick = (content: ContentCreatorContent) => {
+    navigate(`/contents/${content.id}`);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-900 dark:to-indigo-950 p-6">
-      <NavBar/>
-      <div className='h-16'/>
-      <LayoutGroup>
-        <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
-            <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent">
-                Content Dashboard
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-2">
-                Manage and organize your educational content
-              </p>
-            </div>
-            <div className="flex gap-4">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleRefresh}
-                disabled={isLoading || isRefreshing}
-                className={`p-2 rounded-lg border border-gray-200 dark:border-gray-700 
-                  ${isRefreshing ? 'bg-indigo-50 dark:bg-indigo-900/50' : 'bg-white dark:bg-gray-800'}`}
-              >
-                <RefreshCw
-                  size={20}
-                  className={`text-gray-600 dark:text-gray-400 
-                    ${isRefreshing ? 'animate-spin' : ''}`}
-                />
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg shadow-lg hover:shadow-xl transition-shadow"
-              >
-                <Plus size={20} />
-                Create New Content
-              </motion.button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div className="flex gap-4">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                <input
-                  type="text"
-                  placeholder="Search content..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                />
-              </div>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setFilterPublic(filterPublic === null ? true : filterPublic === true ? false : null)}
-                className={`flex items-center gap-2 px-4 py-3 rounded-lg border ${
-                  filterPublic === null
-                    ? 'border-gray-200 dark:border-gray-700'
-                    : 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900'
-                }`}
-              >
-                <Filter size={20} className={filterPublic === null ? 'text-gray-400 dark:text-gray-200' : 'text-indigo-500'} />
-                {filterPublic === null ? 'All' : filterPublic ? 'Public' : 'Private'}
-              </motion.button>
-            </div>
-            <div className="flex gap-4">
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="px-4 py-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all dark:text-gray-200"
-              >
-                <option value="newest">Newest</option>
-                <option value="oldest">Oldest</option>
-                <option value="name">Name</option>
-              </select>
-              <select
-                value={readyFilter}
-                onChange={(e) => setReadyFilter(e.target.value as ReadyFilter)}
-                className="px-4 py-3 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all dark:text-gray-200"
-              >
-                <option value="all">All Status</option>
-                <option value="ready">Ready</option>
-                <option value="draft">Draft</option>
-              </select>
-            </div>
-          </div>
-
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="mb-6 p-4 bg-red-50 dark:bg-red-900/50 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-3 text-red-700 dark:text-red-300"
-            >
-              <AlertCircle size={20} />
-              <p>{error}</p>
-            </motion.div>
-          )}
-
-          <motion.div
-            layout
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+      <NavBar />
+      <div className="h-16" />
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-between items-center mb-8">
+          <motion.h1
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white flex items-center"
           >
-            <>
-              {isLoading ? (
-                Array.from({ length: 6 }).map((_, index) => (
-                  <motion.div
-                    key={`skeleton-${index}`}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border border-gray-100 dark:border-gray-700"
-                  >
-                    <div className="animate-pulse space-y-4">
-                      <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
-                    </div>
-                  </motion.div>
-                ))
-              ) : filteredAndSortedContents.length === 0 ? (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="col-span-full p-8 text-center"
-                >
-                  <p className="text-gray-500 dark:text-gray-400">No content matches your filters</p>
-                </motion.div>
-              ) : (
-                filteredAndSortedContents.map((content) => (
-                  <motion.div
-                    key={content.id}
-                    layoutId={`content-${content.id}`}
-                    initial={{ opacity: 0, y: 0 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 0 }}
-                    whileHover={{ y: -5 }}
-                    onClick={() => setSelectedContent(content)}
-                    className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all cursor-pointer border border-gray-100 dark:border-gray-700"
-                  >
-                    <div className="flex justify-between items-start mb-4">
-                      <motion.h3
-                        layoutId={`title-${content.id}`}
-                        className="text-xl font-semibold text-gray-900 dark:text-white"
-                      >
-                        {content.name}
-                      </motion.h3>
-                      {content.isPublic ? (
-                        <Globe size={20} className="text-green-500" />
-                      ) : (
-                        <Lock size={20} className="text-gray-400" />
-                      )}
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                        <Calendar size={16} />
-                        <span>Created: {format(new Date(content.createdAt), 'PP')}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                        <BookOpen size={16} />
-                        <span>12 Lessons</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-                        <Users size={16} />
-                        <span>156 Students</span>
-                      </div>
-                      <div className="flex items-center gap-2 mt-3">
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          content.ready
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                        }`}>
-                          {content.ready ? 'Ready' : 'Draft'}
-                        </span>
-                        {content.sharingId && (
-                          <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                            Shared
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </motion.div>
-                ))
-              )}
-            </>
-          </motion.div>
-
-          <AnimatePresence>
-            {selectedContent && (
-              <ContentDetails
-                content={selectedContent}
-                onClose={() => setSelectedContent(null)}
-              />
-            )}
-          </AnimatePresence>
+            <BookOpen className="mr-2 text-primary-600 dark:text-primary-400" />
+            Content Dashboard
+          </motion.h1>
+          <div className="flex items-center gap-4">
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={handleRefresh}
+              disabled={isLoading || isRefreshing}
+              className="p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              <RefreshCw className={isRefreshing ? 'animate-spin' : ''} size={20} />
+            </motion.button>
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowCreateDialog(true)}
+              className="flex items-center px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors"
+            >
+              <Plus size={18} className="mr-2" />
+              Create Content
+            </motion.button>
+          </div>
         </div>
-      </LayoutGroup>
+
+        <div className="flex flex-col md:flex-row gap-4 mb-8">
+          <div className="flex-grow">
+            <div className="relative">
+              <Search
+                size={18}
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500"
+              />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search content..."
+                className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-white"
+              />
+            </div>
+          </div>
+          <div className="flex gap-4">
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setFilterPublic(filterPublic === null ? true : filterPublic === true ? false : null)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg border ${
+                filterPublic === null
+                  ? 'border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300'
+                  : 'border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300'
+              }`}
+            >
+              <Filter size={18} />
+              {filterPublic === null ? 'All' : filterPublic ? 'Public' : 'Private'}
+            </motion.button>
+            <select
+              value={readyFilter}
+              onChange={(e) => setReadyFilter(e.target.value as ReadyFilter)}
+              className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-white"
+            >
+              <option value="all">All Status</option>
+              <option value="ready">Ready</option>
+              <option value="training">Training</option>
+              <option value="failed">Failed</option>
+            </select>
+          </div>
+        </div>
+
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-3 text-red-700 dark:text-red-300"
+          >
+            <AlertCircle size={20} />
+            <p>{error}</p>
+          </motion.div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {isLoading ? (
+            Array.from({ length: 6 }).map((_, index) => (
+              <ContentCardSkeleton key={`skeleton-${index}`} />
+            ))
+          ) : filteredAndSortedContents.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="col-span-full text-center py-12"
+            >
+              <p className="text-gray-500 dark:text-gray-400">No content matches your filters</p>
+            </motion.div>
+          ) : (
+            filteredAndSortedContents.map((content) => (
+              <ContentCard
+                key={content.id}
+                content={content}
+                onClick={() => handleContentClick(content)}
+              />
+            ))
+          )}
+        </div>
+
+        <AnimatePresence>
+          {showCreateDialog && (
+            <CreateContentDialog
+              isOpen={showCreateDialog}
+              onClose={() => setShowCreateDialog(false)}
+              onSuccess={handleCreateSuccess}
+            />
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 };

@@ -41,7 +41,7 @@ const MOCK_CONTENTS: SubscriberContent[] = [
 ];
 
 const SubscriberContentViewPage: React.FC = () => {
-  const { contentId } = useParams<{ contentId: string }>();
+  const { id: contentId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [content, setContent] = useState<SubscriberContent | null>(null);
   const [isLoading, setIsLoading] = useState(true);

@@ -16,6 +16,7 @@ export interface ContentCreatorContent {
   sharingId: string;
   ready: boolean;
   createdAt: string;
+  error?: string
 }
 
 export interface SubscriberContent {

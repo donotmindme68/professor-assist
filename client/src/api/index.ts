@@ -1,8 +1,7 @@
 import axios, {AxiosError, AxiosResponse} from 'axios';
-import {ContentCreatorContent, ContentRegistration, Subscriber, Thread} from "types";
-import {API_BASE_URL} from "@/constants.ts";
-import {getUser} from "@/utils";
-
+import {ContentCreatorContent, ContentRegistration, Subscriber, Thread} from '../types';
+import {API_BASE_URL} from '../constants';
+import {getUser} from '../utils';
 
 // Create an Axios instance with default configuration
 const apiClient = axios.create({
@@ -13,21 +12,25 @@ const apiClient = axios.create({
   withCredentials: true, // Include cookies for authentication
 });
 
+// Request Interceptor
 apiClient.interceptors.request.use((config) => {
-  const token = getUser()?.token
+  const token = getUser()?.token;
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 }, (error) => Promise.reject(error));
 
-// Response Interceptor (Optional: Handle Expired Token)
+// Response Interceptor
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response && error.response.status === 401) {
+    // Only handle 401 errors for non-auth endpoints
+    if (error.response?.status === 401 &&
+      !error.config.url?.includes('/login') &&
+      !error.config.url?.includes('/register')) {
       console.warn("Token expired, logging out...");
-      AuthAPI.logout()
+      AuthAPI.logout();
     }
     return Promise.reject(error);
   }
@@ -37,9 +40,9 @@ apiClient.interceptors.response.use(
 const handleError = (error: AxiosError) => {
   if (error.response) {
     // Server responded with a status code outside 2xx
-    throw new Error((error.response?.data as { error: string })?.error || (error.response?.data as {
-      message: string
-    })?.message || 'Something went wrong');
+    throw new Error((error.response?.data as { error: string })?.error ||
+      (error.response?.data as { message: string })?.message ||
+      'Something went wrong');
   } else if (error.request) {
     // Request was made but no response was received
     throw new Error('No response received from the server');
@@ -49,7 +52,7 @@ const handleError = (error: AxiosError) => {
   }
 };
 
-// AuthPage API
+// Auth API
 export const AuthAPI = {
   login: async (email: string, password: string): Promise<{ token: string }> => {
     try {
@@ -61,19 +64,20 @@ export const AuthAPI = {
       const user = response.data;
       localStorage.setItem('user', JSON.stringify(user));
 
-
       return response.data;
     } catch (error) {
       handleError(error as AxiosError);
-      throw error; // Re-throw the error after handling
+      throw error;
     }
   },
+
   logout: () => {
     localStorage.removeItem("user"); // Clear user
     window.location.href = "/auth"; // Redirect to login page
   }
 };
 
+// Content Creator API
 export const ContentCreatorAPI = {
   create: async (email: string, password: string): Promise<void> => {
     try {
@@ -149,11 +153,9 @@ export const SubscriberAPI = {
 
 // Content API
 export const ContentAPI = {
-  create: async (isPublic: boolean, files: File[]): Promise<ContentCreatorContent> => {
+  create: async (formData: FormData): Promise<ContentCreatorContent> => {
     try {
-      const formData = new FormData();
-      formData.append('isPublic', JSON.stringify(isPublic));
-      files.forEach((file) => formData.append('files', file));
+      //todo: bad
 
       const response: AxiosResponse<ContentCreatorContent> = await apiClient.post('/contents/create', formData, {
         headers: {
@@ -167,13 +169,56 @@ export const ContentAPI = {
     }
   },
 
-  update: async (contentId: number, isPublic: boolean, sharingId: string | null, ready: boolean): Promise<ContentCreatorContent> => {
+  update: async (contentId: number, isPublic: boolean, sharingId: string | null): Promise<ContentCreatorContent> => {
     try {
       const response: AxiosResponse<ContentCreatorContent> = await apiClient.put(`/contents/${contentId}`, {
         isPublic,
         sharingId,
-        ready,
       });
+      return response.data;
+    } catch (error) {
+      handleError(error as AxiosError);
+      throw error;
+    }
+  },
+
+  setPublic: async (contentId: number, isPublic: boolean): Promise<ContentCreatorContent> => {
+    try {
+      const response: AxiosResponse<ContentCreatorContent> = await apiClient.put(`/contents/${contentId}/set_public`, {
+        isPublic,
+      });
+      return response.data;
+    } catch (error) {
+      handleError(error as AxiosError);
+      throw error;
+    }
+  },
+
+  removeLink: async (contentId: number): Promise<ContentCreatorContent> => {
+    try {
+      const response: AxiosResponse<ContentCreatorContent> = await apiClient.put(`/contents/${contentId}/remove_link`, {
+      });
+      return response.data;
+    } catch (error) {
+      handleError(error as AxiosError);
+      throw error;
+    }
+  },
+
+  rotateLink: async (contentId: number): Promise<ContentCreatorContent> => {
+    try {
+      const response: AxiosResponse<ContentCreatorContent> = await apiClient.put(`/contents/${contentId}/rotate_link`, {
+      });
+      return response.data;
+    } catch (error) {
+      handleError(error as AxiosError);
+      throw error;
+    }
+  },
+
+  delete : async (contentId: number): Promise<{ message: string }> => {
+    try {
+      const response: AxiosResponse<{ message: string }> = await apiClient.delete(`/contents/${contentId}/delete`);
       return response.data;
     } catch (error) {
       handleError(error as AxiosError);
@@ -232,7 +277,9 @@ export const ThreadAPI = {
     append: boolean = false // Default to false if not provided
   ): Promise<Thread & { assistantResponse?: string }> => {
     try {
-      const response: AxiosResponse<Thread & { assistantResponse?: string }> = await apiClient.put(`/threads/${threadId}`, {
+      const response: AxiosResponse<Thread & {
+        assistantResponse?: string
+      }> = await apiClient.put(`/threads/${threadId}`, {
         messages,
         metaInfo,
         generateCompletion,
@@ -279,4 +326,13 @@ export const PublicContentAPI = {
       throw error;
     }
   },
+};
+
+export default {
+  auth: AuthAPI,
+  contentCreator: ContentCreatorAPI,
+  subscriber: SubscriberAPI,
+  content: ContentAPI,
+  thread: ThreadAPI,
+  publicContent: PublicContentAPI,
 };

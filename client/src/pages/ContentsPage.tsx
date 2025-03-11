@@ -2,6 +2,7 @@ import {getUser} from "@/utils";
 import {Navigate} from "react-router-dom";
 import React from "react";
 import SubscriberContentViewPage from "@/pages/SubscriberContentViewPage.tsx";
+import ContentDetailsPage from "@/pages/ContentDetailsPage.tsx";
 
 export function ContentsPage() {
   const user = getUser();
@@ -11,7 +12,7 @@ export function ContentsPage() {
     return <Navigate to="/auth" replace/>;
   }
   if (user.role === 'content-creator')
-    return <div>TODO: implement content creator's contents</div>
+    return <ContentDetailsPage/>
 
   else return <SubscriberContentViewPage/>
 }

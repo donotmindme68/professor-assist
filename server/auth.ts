@@ -19,11 +19,11 @@ export const createUser = async (req: Request, res: Response) => {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    const user = await User.create({
+    const user = (await User.create({
       email,
       passwordHash,
       name: name || null
-    });
+    })).dataValues;
 
     if (role === 'content-creator') {
       const creator = (await ContentCreator.create({ userId: user.id }))?.dataValues;

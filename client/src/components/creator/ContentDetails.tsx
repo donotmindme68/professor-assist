@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Globe, Lock, Calendar, Share2, BookOpen, Users, MessageSquare, BarChart,
-  Trash2, RefreshCw, UserMinus, Search, AlertCircle, Check, XCircle
+  RefreshCw, UserMinus, Search, AlertCircle, Check
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { Content } from 'types';
+import { ContentCreatorContent } from '../../types';
+import { ContentCreatorAPI, ContentAPI } from '../../api';
 
 interface ContentDetailsProps {
-  content: Content;
+  content: ContentCreatorContent;
   onClose: () => void;
 }
 
@@ -19,46 +20,6 @@ interface Student {
   joinedAt: string;
   lastActive: string;
 }
-
-// Simulated API
-const api = {
-  togglePublic: async (contentId: number, isPublic: boolean) => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    // if (Math.random() < 0.1) throw new Error('Failed to update content visibility');
-    return { isPublic };
-  },
-  regenerateShareLink: async (contentId: number) => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    // if (Math.random() < 0.1) throw new Error('Failed to regenerate share link');
-    return { sharingId: `new-share-${Date.now()}` };
-  },
-  removeShareLink: async (contentId: number) => {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    // if (Math.random() < 0.1) throw new Error('Failed to remove share link');
-    return { sharingId: null };
-  },
-  deleteContent: async (contentId: number) => {
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    // if (Math.random() < 0.1) throw new Error('Failed to delete content');
-    return true;
-  },
-  getStudents: async (contentId: number) => {
-    await new Promise(resolve => setTimeout(resolve, 800));
-    // if (Math.random() < 0.1) throw new Error('Failed to fetch students');
-    return Array.from({ length: 10 }, (_, i) => ({
-      id: i + 1,
-      name: `Student ${i + 1}`,
-      email: `student${i + 1}@example.com`,
-      joinedAt: new Date(Date.now() - Math.random() * 10000000000).toISOString(),
-      lastActive: new Date(Date.now() - Math.random() * 1000000000).toISOString(),
-    }));
-  },
-  removeStudent: async (contentId: number, studentId: number) => {
-    await new Promise(resolve => setTimeout(resolve, 800));
-    // if (Math.random() < 0.1) throw new Error('Failed to remove student');
-    return true;
-  },
-};
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -95,12 +56,12 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full mx-4 shadow-xl"
           onClick={e => e.stopPropagation()}
         >
-          <h3 className="text-xl font-semibold mb-2">{title}</h3>
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>
           <p className="text-gray-600 dark:text-gray-400 mb-6">{message}</p>
           <div className="flex justify-end gap-3">
             <button
               onClick={onCancel}
-              className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+              className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
             >
               Cancel
             </button>
@@ -109,7 +70,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
               className={`px-4 py-2 rounded-lg text-white ${
                 isDestructive
                   ? 'bg-red-600 hover:bg-red-700'
-                  : 'bg-indigo-600 hover:bg-indigo-700'
+                  : 'bg-primary-600 hover:bg-primary-700'
               }`}
             >
               {confirmLabel}
@@ -144,7 +105,7 @@ const ContentDetails: React.FC<ContentDetailsProps> = ({ content: initialContent
 
   useEffect(() => {
     fetchStudents();
-  }, []);
+  }, [content.id]);
 
   const showSuccess = (message: string) => {
     setSuccessMessage(message);
@@ -155,10 +116,11 @@ const ContentDetails: React.FC<ContentDetailsProps> = ({ content: initialContent
     try {
       setIsLoadingStudents(true);
       setError(null);
-      const data = await api.getStudents(content.id);
-      setStudents(data);
+      const data = await ContentCreatorAPI.listSubscribers(content.id);
+      setStudents(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load students');
+      setStudents([]);
     } finally {
       setIsLoadingStudents(false);
     }
@@ -168,8 +130,8 @@ const ContentDetails: React.FC<ContentDetailsProps> = ({ content: initialContent
     try {
       setIsTogglingPublic(true);
       setError(null);
-      const result = await api.togglePublic(content.id, !content.isPublic);
-      setContent(prev => ({ ...prev, isPublic: result.isPublic }));
+      const updatedContent = await ContentAPI.setPublic(content.id, !content.isPublic)
+      setContent(updatedContent);
       showSuccess('Content visibility updated successfully');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update visibility');
@@ -182,8 +144,8 @@ const ContentDetails: React.FC<ContentDetailsProps> = ({ content: initialContent
     try {
       setIsRegeneratingShare(true);
       setError(null);
-      const result = await api.regenerateShareLink(content.id);
-      setContent(prev => ({ ...prev, sharingId: result.sharingId }));
+      const updatedContent = await ContentAPI.rotateLink(content.id);
+      setContent(updatedContent);
       setShowRegenerateConfirm(false);
       showSuccess('Share link regenerated successfully');
     } catch (err) {
@@ -197,8 +159,8 @@ const ContentDetails: React.FC<ContentDetailsProps> = ({ content: initialContent
     try {
       setIsRemovingShare(true);
       setError(null);
-      await api.removeShareLink(content.id);
-      setContent(prev => ({ ...prev, sharingId: null }));
+      const updatedContent = await ContentAPI.removeLink(content.id);
+      setContent(updatedContent);
       setShowRemoveShareConfirm(false);
       showSuccess('Share link removed successfully');
     } catch (err) {
@@ -212,7 +174,7 @@ const ContentDetails: React.FC<ContentDetailsProps> = ({ content: initialContent
     try {
       setIsLoading(true);
       setError(null);
-      await api.deleteContent(content.id);
+      await ContentAPI.delete(content.id);
       showSuccess('Content deleted successfully');
       setTimeout(onClose, 1500);
     } catch (err) {
@@ -225,7 +187,7 @@ const ContentDetails: React.FC<ContentDetailsProps> = ({ content: initialContent
     try {
       setRemovingStudentId(studentId);
       setError(null);
-      await api.removeStudent(content.id, studentId);
+      await ContentCreatorAPI.removeSubscriber(content.id, studentId);
       setStudents(prev => prev.filter(s => s.id !== studentId));
       setShowRemoveStudentConfirm(null);
       showSuccess('Student removed successfully');
@@ -242,79 +204,61 @@ const ContentDetails: React.FC<ContentDetailsProps> = ({ content: initialContent
   );
 
   return (
-    <motion.div
-      layoutId={`content-${content.id}`}
-      initial={{ borderRadius: 12 }}
-      className="fixed inset-0 bg-gradient-to-br from-white to-indigo-50 dark:from-gray-900 dark:to-indigo-950 z-50 overflow-y-auto"
-    >
-      <div className="max-w-7xl mx-auto p-6 md:p-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="flex justify-between items-start mb-8"
-        >
-          <div>
-            <motion.h2
-              layoutId={`title-${content.id}`}
-              className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-blue-600 bg-clip-text text-transparent mb-2"
-            >
-              {content.name}
-            </motion.h2>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="flex items-center gap-4"
-            >
-              <button
-                onClick={() => handleTogglePublic()}
-                disabled={isTogglingPublic}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${
-                  content.isPublic
-                    ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400'
-                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
-                }`}
+    <div className="container mx-auto px-4 py-8">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex justify-between items-start">
+            <div>
+              <motion.h2
+                layoutId={`title-${content.id}`}
+                className="text-2xl font-bold bg-clip-text text-gray-900 dark:text-white mb-2"
               >
-                {isTogglingPublic ? (
-                  <RefreshCw size={16} className="animate-spin" />
-                ) : content.isPublic ? (
-                  <Globe size={16} />
-                ) : (
-                  <Lock size={16} />
-                )}
-                {content.isPublic ? 'Public' : 'Private'}
-              </button>
-              <span className={`px-2 py-1 rounded-full text-xs ${
-                content.ready
-                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                  : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-              }`}>
-                {content.ready ? 'Ready' : 'Draft'}
-              </span>
-            </motion.div>
-          </div>
-          <div className="flex items-center gap-3">
-            <motion.button
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2 }}
-              onClick={() => setShowDeleteConfirm(true)}
-              className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/50 rounded-lg transition-colors"
-            >
-              <Trash2 size={20} />
-            </motion.button>
+                {content.name}
+              </motion.h2>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="flex items-center gap-4"
+              >
+                <button
+                  onClick={() => handleTogglePublic()}
+                  disabled={isTogglingPublic}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors ${
+                    content.isPublic
+                      ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400'
+                      : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
+                  }`}
+                >
+                  {isTogglingPublic ? (
+                    <RefreshCw size={16} className="animate-spin" />
+                  ) : content.isPublic ? (
+                    <Globe size={16} />
+                  ) : (
+                    <Lock size={16} />
+                  )}
+                  {content.isPublic ? 'Public' : 'Private'}
+                </button>
+                <span className={`px-2 py-1 rounded-full text-xs ${
+                  content.ready
+                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                }`}>
+                  {content.ready ? 'Ready' : 'Draft'}
+                </span>
+              </motion.div>
+            </div>
             <motion.button
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.2 }}
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
               <X size={20} className="text-gray-600 dark:text-gray-400" />
             </motion.button>
           </div>
-        </motion.div>
+        </div>
 
         <AnimatePresence>
           {error && (
@@ -322,7 +266,7 @@ const ContentDetails: React.FC<ContentDetailsProps> = ({ content: initialContent
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="mb-6 p-4 bg-red-50 dark:bg-red-900/50 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-3 text-red-700 dark:text-red-300"
+              className="m-6 p-4 bg-red-50 dark:bg-red-900/50 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-3 text-red-700 dark:text-red-300"
             >
               <AlertCircle size={20} />
               <p>{error}</p>
@@ -336,7 +280,7 @@ const ContentDetails: React.FC<ContentDetailsProps> = ({ content: initialContent
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="mb-6 p-4 bg-green-50 dark:bg-green-900/50 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-3 text-green-700 dark:text-green-300"
+              className="m-6 p-4 bg-green-50 dark:bg-green-900/50 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-3 text-green-700 dark:text-green-300"
             >
               <Check size={20} />
               <p>{successMessage}</p>
@@ -344,32 +288,32 @@ const ContentDetails: React.FC<ContentDetailsProps> = ({ content: initialContent
           )}
         </AnimatePresence>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
             className="col-span-2 space-y-6"
           >
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg">
+            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-6">
               <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Content Overview</h3>
               <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-700 dark:to-gray-800 rounded-xl">
+                <div className="p-4 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-700/50 dark:to-gray-800/50 rounded-xl">
                   <BookOpen className="text-indigo-600 dark:text-indigo-400 mb-2" size={24} />
                   <h4 className="font-medium text-gray-900 dark:text-white">Lessons</h4>
                   <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">12</p>
                 </div>
-                <div className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-700 dark:to-gray-800 rounded-xl">
+                <div className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-700/50 dark:to-gray-800/50 rounded-xl">
                   <Users className="text-purple-600 dark:text-purple-400 mb-2" size={24} />
                   <h4 className="font-medium text-gray-900 dark:text-white">Students</h4>
                   <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{students.length}</p>
                 </div>
-                <div className="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-gray-700 dark:to-gray-800 rounded-xl">
+                <div className="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-gray-700/50 dark:to-gray-800/50 rounded-xl">
                   <MessageSquare className="text-blue-600 dark:text-blue-400 mb-2" size={24} />
                   <h4 className="font-medium text-gray-900 dark:text-white">Discussions</h4>
                   <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">48</p>
                 </div>
-                <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-gray-700 dark:to-gray-800 rounded-xl">
+                <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-gray-700/50 dark:to-gray-800/50 rounded-xl">
                   <BarChart className="text-green-600 dark:text-green-400 mb-2" size={24} />
                   <h4 className="font-medium text-gray-900 dark:text-white">Completion Rate</h4>
                   <p className="text-2xl font-bold text-green-600 dark:text-green-400">87%</p>
@@ -377,7 +321,7 @@ const ContentDetails: React.FC<ContentDetailsProps> = ({ content: initialContent
               </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg">
+            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-6">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Enrolled Students</h3>
                 <div className="relative">
@@ -387,7 +331,7 @@ const ContentDetails: React.FC<ContentDetailsProps> = ({ content: initialContent
                     placeholder="Search students..."
                     value={studentSearch}
                     onChange={(e) => setStudentSearch(e.target.value)}
-                    className="pl-9 pr-4 py-2 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="pl-9 pr-4 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 focus:ring-2 focus:ring-primary-500 focus:border-transparent dark:text-white"
                   />
                 </div>
               </div>
@@ -395,7 +339,7 @@ const ContentDetails: React.FC<ContentDetailsProps> = ({ content: initialContent
               {isLoadingStudents ? (
                 <div className="space-y-4">
                   {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="animate-pulse flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-700">
+                    <div key={i} className="animate-pulse flex items-center justify-between p-4 rounded-lg bg-white dark:bg-gray-800">
                       <div className="space-y-2">
                         <div className="h-4 bg-gray-200 dark:bg-gray-600 rounded w-32"></div>
                         <div className="h-3 bg-gray-200 dark:bg-gray-600 rounded w-48"></div>
@@ -413,7 +357,7 @@ const ContentDetails: React.FC<ContentDetailsProps> = ({ content: initialContent
                   {filteredStudents.map(student => (
                     <div
                       key={student.id}
-                      className="flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      className="flex items-center justify-between p-4 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                     >
                       <div>
                         <h4 className="font-medium text-gray-900 dark:text-white">{student.name}</h4>
@@ -446,7 +390,7 @@ const ContentDetails: React.FC<ContentDetailsProps> = ({ content: initialContent
             transition={{ delay: 0.4 }}
             className="space-y-6"
           >
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg">
+            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-6">
               <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Content Details</h3>
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
@@ -462,13 +406,13 @@ const ContentDetails: React.FC<ContentDetailsProps> = ({ content: initialContent
                     <p className="text-sm text-gray-500 dark:text-gray-400">Sharing</p>
                     {content.sharingId ? (
                       <div className="flex items-center gap-2">
-                        <code className="font-medium bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-sm">
+                        <code className="font-medium bg-white dark:bg-gray-800 px-2 py-1 rounded text-sm">
                           {content.sharingId}
                         </code>
                         <button
                           onClick={() => setShowRegenerateConfirm(true)}
                           disabled={isRegeneratingShare}
-                          className="p-1 text-gray-500 hover:text-indigo-600 dark:text-gray-400 dark:hover:text-indigo-400"
+                          className="p-1 text-gray-500 hover:text-primary-600 dark:text-gray-400 dark:hover:text-primary-400"
                         >
                           {isRegeneratingShare ? (
                             <RefreshCw size={16} className="animate-spin" />
@@ -484,7 +428,7 @@ const ContentDetails: React.FC<ContentDetailsProps> = ({ content: initialContent
                           {isRemovingShare ? (
                             <RefreshCw size={16} className="animate-spin" />
                           ) : (
-                            <XCircle size={16} />
+                            <X size={16} />
                           )}
                         </button>
                       </div>
@@ -492,7 +436,7 @@ const ContentDetails: React.FC<ContentDetailsProps> = ({ content: initialContent
                       <button
                         onClick={() => handleRegenerateShare()}
                         disabled={isRegeneratingShare}
-                        className="text-indigo-600 dark:text-indigo-400 text-sm font-medium"
+                        className="text-primary-600 dark:text-primary-400 text-sm font-medium"
                       >
                         Generate share link
                       </button>
@@ -502,7 +446,7 @@ const ContentDetails: React.FC<ContentDetailsProps> = ({ content: initialContent
               </div>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg">
+            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-2xl p-6">
               <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Danger Zone</h3>
               <button
                 onClick={() => setShowDeleteConfirm(true)}
@@ -512,9 +456,8 @@ const ContentDetails: React.FC<ContentDetailsProps> = ({ content: initialContent
                 {isLoading ? (
                   <RefreshCw size={16} className="animate-spin" />
                 ) : (
-                  <Trash2 size={16} />
+                  'Delete Content'
                 )}
-                Delete Content
               </button>
             </div>
           </motion.div>
@@ -558,7 +501,7 @@ const ContentDetails: React.FC<ContentDetailsProps> = ({ content: initialContent
         onCancel={() => setShowRemoveStudentConfirm(null)}
         isDestructive
       />
-    </motion.div>
+    </div>
   );
 };
 

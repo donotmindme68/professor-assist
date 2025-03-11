@@ -1,16 +1,18 @@
-import type { Express, Request, Response } from "express";
-import { createServer, type Server } from "http";
-import multer, { FileFilterCallback } from "multer";
+import type {Express, Request, Response} from "express";
+import {createServer, type Server} from "http";
+import multer, {FileFilterCallback} from "multer";
 import path from "path";
-import { Content, ContentRegistration, Thread, User } from "@db/schema";
+import {Content, ContentRegistration, Thread, User} from "@db/schema";
 import OpenAI from "openai";
-import { SYSTEM_PROMPT } from "./constants";
-import { authenticateUser, authorizeContentCreator, authorizeSubscriber, createUser, loginUser } from "./auth";
-import { v4 as uuidv4 } from 'uuid';
+import {ASSISTANT_SYSTEM_PROMPT} from "./constants";
+import {authenticateUser, authorizeContentCreator, authorizeSubscriber, createUser, loginUser} from "./auth";
+import {v4 as uuidv4} from 'uuid';
 import {Op} from "sequelize";
 import {Thread as ThreadType} from 'types'
-
-const openai = new OpenAI();
+import openai from "./aiClient.ts"
+import './training.ts'
+import {train_content} from "./training.ts";
+import {generateRandomString} from "@/utils";
 
 // Extend the Request type to include the user property
 declare module 'express' {
@@ -33,7 +35,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  limits: {fileSize: 5 * 1024 * 1024}, // 5MB limit
   fileFilter: (req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
     const allowedTypes = [
       'image/jpeg', 'image/png', 'image/gif',
@@ -50,13 +52,28 @@ const upload = multer({
 const ContentCreatorView = {
   listContents: [authorizeContentCreator, async (req: Request, res: Response) => {
     try {
-      const creatorContents = await Content.findAll({
-        where: { creatorId: req.user!.id },
-        include: [{ model: ContentRegistration }]
-      });
+      let creatorContents = (await Content.findAll({
+        where: {creatorId: req.user!.id},
+        include: [{model: ContentRegistration}]
+      })).map(e => e.dataValues);
+
+      creatorContents = await Promise.all(creatorContents.map(async (c) => {
+        if (c.ready === false && c.error === null) {
+          const job = await openai.fineTuning.jobs.retrieve(c.modelInfo.jobId)
+          if (job.status === 'succeeded') {
+            c.ready = true
+            await Content.update({ready: true}, {where: {id: c.id}})
+          } else if (job.status in ['failed', 'cancelled']) {
+            c.error = job.error
+            await Content.update({error: job.status === 'failed' ? job.error : 'cancelled'}, {where: {id: c.id}})
+          }
+        }
+        return Promise.resolve(c)
+      }))
+
       res.json(creatorContents);
     } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch contents' });
+      res.status(500).json({error: 'Failed to fetch contents'});
     }
   }],
 
@@ -64,7 +81,7 @@ const ContentCreatorView = {
     try {
       const contentId = parseInt(req.params.id);
       const contentSubscribers = await ContentRegistration.findAll({
-        where: { contentId },
+        where: {contentId},
         include: [{
           model: User,
           attributes: ['id', 'name', 'email']
@@ -72,7 +89,7 @@ const ContentCreatorView = {
       });
       res.json(contentSubscribers);
     } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch subscribers' });
+      res.status(500).json({error: 'Failed to fetch subscribers'});
     }
   }],
 
@@ -86,9 +103,9 @@ const ContentCreatorView = {
           subscriberId,
         },
       });
-      res.json({ message: 'Subscriber removed successfully' });
+      res.json({message: 'Subscriber removed successfully'});
     } catch (error) {
-      res.status(500).json({ error: 'Failed to remove subscriber' });
+      res.status(500).json({error: 'Failed to remove subscriber'});
     }
   }],
 };
@@ -97,7 +114,7 @@ const SubscriberView = {
   listSubscriptions: [authorizeSubscriber, async (req: Request, res: Response) => {
     try {
       const subscriberSubscriptions = await ContentRegistration.findAll({
-        where: { subscriberId: req.user!.id },
+        where: {subscriberId: req.user!.id},
         include: [{
           model: Content,
           attributes: ['id', 'name', 'description', 'isPublic', 'ready']
@@ -105,14 +122,14 @@ const SubscriberView = {
       });
       res.json(subscriberSubscriptions);
     } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch subscriptions' });
+      res.status(500).json({error: 'Failed to fetch subscriptions'});
     }
   }],
 
   getSubscribedContents: [authorizeSubscriber, async (req: Request, res: Response) => {
     try {
       const subscriptions = await ContentRegistration.findAll({
-        where: { subscriberId: req.user!.id },
+        where: {subscriberId: req.user!.id},
         include: [{
           model: Content,
           attributes: ['id', 'name', 'description', 'isPublic', 'ready']
@@ -122,7 +139,7 @@ const SubscriberView = {
       const contents = subscriptions.map(sub => sub.get('content'));
       res.json(contents);
     } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch subscribed contents' });
+      res.status(500).json({error: 'Failed to fetch subscribed contents'});
     }
   }]
 };
@@ -130,22 +147,26 @@ const SubscriberView = {
 const ContentView = {
   create: [authorizeContentCreator, upload.array('files', 5), async (req: Request, res: Response) => {
     try {
-      const sharingId = req.body.isPublic ? uuidv4() : null;
+      const {name, description, isPublic, modelInfo: _modelInfo} = req.body;
+      const modelInfo = JSON.parse(_modelInfo)
+      const files = req.files as Express.Multer.File[];
+
+      const job = await train_content(files, modelInfo.prompt, modelInfo.type);
+
       const content = await Content.create({
-        name: req.body.name,
-        description: req.body.description,
+        name: name,
+        description: description,
         creatorId: req.user!.id,
-        isPublic: req.body.isPublic,
-        sharingId,
-        modelInfo: req.body.modelInfo || {},
+        isPublic: isPublic,
+        modelInfo: {...modelInfo, jobId: job.id},
       });
       res.json(content);
     } catch (error) {
-      res.status(500).json({ error: 'Failed to create content' });
+      res.status(500).json({error: 'Failed to create content'});
     }
   }],
 
-  update: [authorizeContentCreator, async (req: Request, res: Response) => {
+  toremove: [authorizeContentCreator, async (req: Request, res: Response) => { //todo: remove
     try {
       const contentId = parseInt(req.params.id);
       const [updated] = await Content.update({
@@ -156,16 +177,90 @@ const ContentView = {
         ready: req.body.ready,
         modelInfo: req.body.modelInfo,
       }, {
-        where: { id: contentId, creatorId: req.user!.id },
+        where: {id: contentId, creatorId: req.user!.id},
       });
       if (updated) {
         const updatedContent = await Content.findByPk(contentId);
         res.json(updatedContent);
       } else {
-        res.status(404).json({ error: 'Content not found' });
+        res.status(404).json({error: 'Content not found'});
       }
     } catch (error) {
-      res.status(500).json({ error: 'Failed to update content' });
+      res.status(500).json({error: 'Failed to update content'});
+    }
+  }],
+
+  setPublic: [authorizeContentCreator, async (req: Request, res: Response) => {
+    try {
+      const contentId = parseInt(req.params.id);
+      const [updated] = await Content.update({
+        isPublic: req.body.isPublic,
+      }, {
+        where: {id: contentId, creatorId: req.user!.id},
+      });
+      if (updated) {
+        const updatedContent = (await Content.findByPk(contentId))?.dataValues;
+        res.json(updatedContent);
+      } else {
+        res.status(404).json({error: 'Content not found'});
+      }
+    } catch (error) {
+      res.status(500).json({error: 'Failed to update content'});
+    }
+  }],
+
+
+  rotateLink: [authorizeContentCreator, async (req: Request, res: Response) => {
+    try {
+      const contentId = parseInt(req.params.id);
+      const [updated] = await Content.update({
+        sharingId: generateRandomString(16),
+      }, {
+        where: {id: contentId, creatorId: req.user!.id},
+      });
+      if (updated) {
+        const updatedContent = (await Content.findByPk(contentId))?.dataValues;
+        res.json(updatedContent);
+      } else {
+        res.status(404).json({error: 'Content not found'});
+      }
+    } catch (error) {
+      res.status(500).json({error: 'Failed to update content'});
+    }
+  }],
+
+  removeLink: [authorizeContentCreator, async (req: Request, res: Response) => {
+    try {
+      const contentId = parseInt(req.params.id);
+      const [updated] = await Content.update({
+        sharingId: null
+      }, {
+        where: {id: contentId, creatorId: req.user!.id},
+      });
+      if (updated) {
+        const updatedContent = (await Content.findByPk(contentId))?.dataValues;
+        res.json(updatedContent);
+      } else {
+        res.status(404).json({error: 'Content not found'});
+      }
+    } catch (error) {
+      res.status(500).json({error: 'Failed to update content'});
+    }
+  }],
+
+  remove: [authorizeContentCreator, async (req: Request, res: Response) => {
+    try {
+      const contentId = parseInt(req.params.id);
+      const result = await Content.destroy({
+        where: {id: contentId, creatorId: req.user!.id},
+      });
+      if (result) {
+        res.json({"message": "Content deleted successfully"});
+      } else {
+        res.status(404).json({error: 'Content not found'});
+      }
+    } catch (error) {
+      res.status(500).json({error: 'Failed to update content'});
     }
   }],
 
@@ -175,11 +270,11 @@ const ContentView = {
       const content = await Content.findByPk(contentId);
 
       if (!content) {
-        return res.status(404).json({ error: 'Content not found' });
+        return res.status(404).json({error: 'Content not found'});
       }
 
       if (!content.isPublic) {
-        return res.status(403).json({ error: 'Content is not public' });
+        return res.status(403).json({error: 'Content is not public'});
       }
 
       const registration = await ContentRegistration.create({
@@ -188,7 +283,7 @@ const ContentView = {
       });
       res.json(registration);
     } catch (error) {
-      res.status(500).json({ error: 'Failed to register for content' });
+      res.status(500).json({error: 'Failed to register for content'});
     }
   }],
 
@@ -201,9 +296,9 @@ const ContentView = {
           contentId,
         },
       });
-      res.json({ message: 'Unregistered successfully' });
+      res.json({message: 'Unregistered successfully'});
     } catch (error) {
-      res.status(500).json({ error: 'Failed to unregister from content' });
+      res.status(500).json({error: 'Failed to unregister from content'});
     }
   }],
 
@@ -211,24 +306,26 @@ const ContentView = {
     try {
       const inviteLink = req.query.link as string;
       if (!inviteLink) {
-        return res.status(400).json({ error: 'Invite link is required' });
+        return res.status(400).json({error: 'Invite link is required'});
       }
 
       const content = await Content.findOne({
-        where: { sharingId: inviteLink },
+        where: {sharingId: inviteLink},
         attributes: ['id', 'name', 'description', 'creatorId', 'isPublic']
       });
 
       if (!content) {
-        return res.status(404).json({ error: 'Content not found or invite link expired' });
+        return res.status(404).json({error: 'Content not found or invite link expired'});
       }
 
       res.json(content);
     } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch content by invite link' });
+      res.status(500).json({error: 'Failed to fetch content by invite link'});
     }
-  }
+  },
 };
+
+
 
 const ThreadView = {
   create: [authorizeSubscriber, async (req: Request, res: Response) => {
@@ -247,7 +344,7 @@ const ThreadView = {
         const completion = await openai.chat.completions.create({
           model: "gpt-4",
           messages: [
-            { role: "system", content: SYSTEM_PROMPT },
+            {role: "system", content: ASSISTANT_SYSTEM_PROMPT},
             ...req.body.messages,
           ],
         });
@@ -255,8 +352,8 @@ const ThreadView = {
         assistantResponse = completion.choices[0].message.content;
 
         await Thread.update(
-          { messages: [...thread.messages, { role: 'assistant', content: assistantResponse }] },
-          { where: { id: thread.id } }
+          {messages: [...thread.messages, {role: 'assistant', content: assistantResponse}]},
+          {where: {id: thread.id}}
         );
       }
 
@@ -266,21 +363,21 @@ const ThreadView = {
       });
     } catch (error) {
       console.error('Error creating thread:', error);
-      res.status(500).json({ error: 'Failed to create thread' });
+      res.status(500).json({error: 'Failed to create thread'});
     }
   }],
 
   update: [authorizeSubscriber, async (req: Request, res: Response) => {
     try {
       const threadId = parseInt(req.params.id);
-      const { messages, metaInfo, generateCompletion, append } = req.body;
+      const {messages, metaInfo, generateCompletion, append} = req.body;
 
       const thread = await Thread.findOne({
-        where: { id: threadId, subscriberId: req.user!.id }
+        where: {id: threadId, subscriberId: req.user!.id}
       });
 
       if (!thread) {
-        return res.status(404).json({ error: 'Thread not found' });
+        return res.status(404).json({error: 'Thread not found'});
       }
 
       const updatedMessages = append
@@ -293,7 +390,7 @@ const ThreadView = {
           metaInfo: metaInfo || thread.metaInfo,
         },
         {
-          where: { id: threadId, subscriberId: req.user!.id },
+          where: {id: threadId, subscriberId: req.user!.id},
         }
       );
 
@@ -303,7 +400,7 @@ const ThreadView = {
         const completion = await openai.chat.completions.create({
           model: "gpt-4",
           messages: [
-            { role: "system", content: SYSTEM_PROMPT },
+            {role: "system", content: ASSISTANT_SYSTEM_PROMPT},
             ...updatedMessages,
           ],
         });
@@ -311,8 +408,8 @@ const ThreadView = {
         assistantResponse = completion.choices[0].message.content;
 
         await Thread.update(
-          { messages: [...updatedMessages, { role: 'assistant', content: assistantResponse }] },
-          { where: { id: threadId } }
+          {messages: [...updatedMessages, {role: 'assistant', content: assistantResponse}]},
+          {where: {id: threadId}}
         );
       }
 
@@ -323,7 +420,7 @@ const ThreadView = {
       });
     } catch (error) {
       console.error('Error updating thread:', error);
-      res.status(500).json({ error: 'Failed to update thread' });
+      res.status(500).json({error: 'Failed to update thread'});
     }
   }],
 
@@ -331,17 +428,17 @@ const ThreadView = {
     try {
       const threadId = parseInt(req.params.id);
       const thread = await Thread.findOne({
-        where: { id: threadId, subscriberId: req.user!.id }
+        where: {id: threadId, subscriberId: req.user!.id}
       });
 
       if (!thread) {
-        return res.status(404).json({ error: 'Thread not found' });
+        return res.status(404).json({error: 'Thread not found'});
       }
 
       let assistantResponse = null;
       if (req.body.generateCompletion && thread.messages.length > 0) {
         const completion = await openai.chat.completions.create({
-          messages: [{ role: "system", content: SYSTEM_PROMPT }, ...thread.messages],
+          messages: [{role: "system", content: ASSISTANT_SYSTEM_PROMPT}, ...thread.messages],
           model: "gpt-4",
         });
         assistantResponse = completion.choices[0].message.content;
@@ -352,7 +449,7 @@ const ThreadView = {
         assistantResponse
       });
     } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch thread' });
+      res.status(500).json({error: 'Failed to fetch thread'});
     }
   }],
 
@@ -360,16 +457,16 @@ const ThreadView = {
     try {
       const threadId = parseInt(req.params.id);
       const deleted = await Thread.destroy({
-        where: { id: threadId, subscriberId: req.user!.id }
+        where: {id: threadId, subscriberId: req.user!.id}
       });
 
       if (!deleted) {
-        return res.status(404).json({ error: 'Thread not found' });
+        return res.status(404).json({error: 'Thread not found'});
       }
 
-      res.json({ message: 'Thread deleted successfully' });
+      res.json({message: 'Thread deleted successfully'});
     } catch (error) {
-      res.status(500).json({ error: 'Failed to delete thread' });
+      res.status(500).json({error: 'Failed to delete thread'});
     }
   }],
 
@@ -385,7 +482,7 @@ const ThreadView = {
       });
       res.json(threads);
     } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch threads' });
+      res.status(500).json({error: 'Failed to fetch threads'});
     }
   }]
 };
@@ -394,12 +491,12 @@ const PublicContentView = {
   list: async (req: Request, res: Response) => {
     try {
       const publicContents = await Content.findAll({
-        where: { isPublic: true },
+        where: {isPublic: true},
         attributes: ['id', 'name', 'description', 'creatorId', 'isPublic']
       });
       res.json(publicContents);
     } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch public contents' });
+      res.status(500).json({error: 'Failed to fetch public contents'});
     }
   },
 
@@ -407,15 +504,15 @@ const PublicContentView = {
     try {
       const query = req.query.q as string;
       if (!query) {
-        return res.status(400).json({ error: 'Search query is required' });
+        return res.status(400).json({error: 'Search query is required'});
       }
 
       const contents = await Content.findAll({
         where: {
           isPublic: true,
           [Op.or]: [
-            { name: { [Op.iLike]: `%${query}%` } },
-            { description: { [Op.iLike]: `%${query}%` } }
+            {name: {[Op.iLike]: `%${query}%`}},
+            {description: {[Op.iLike]: `%${query}%`}}
           ]
         },
         attributes: ['id', 'name', 'description', 'creatorId', 'isPublic']
@@ -423,7 +520,7 @@ const PublicContentView = {
 
       res.json(contents);
     } catch (error) {
-      res.status(500).json({ error: 'Failed to search contents' });
+      res.status(500).json({error: 'Failed to search contents'});
     }
   }
 };
@@ -439,11 +536,11 @@ export function registerRoutes(app: Express): Server {
   app.get('/api/user/profile', async (req: Request, res: Response) => {
     try {
       const user = await User.findByPk(req.user!.id, {
-        attributes: { exclude: ['passwordHash'] }
+        attributes: {exclude: ['passwordHash']}
       });
       res.json(user);
     } catch (error) {
-      res.status(500).json({ error: 'Failed to fetch user profile' });
+      res.status(500).json({error: 'Failed to fetch user profile'});
     }
   });
 
@@ -458,7 +555,10 @@ export function registerRoutes(app: Express): Server {
 
   // Content routes
   app.post('/api/contents/create', ContentView.create);
-  app.put('/api/contents/:id', ContentView.update);
+  app.put('/api/contents/:id/set_public', ContentView.setPublic);
+  app.put('/api/contents/:id/rotate_link', ContentView.rotateLink);
+  app.put('/api/contents/:id/remove_link', ContentView.removeLink);
+  app.put('/api/contents/:id/delete', ContentView.removeLink);
   app.post('/api/contents/:id/register', ContentView.register);
   app.delete('/api/contents/:id/unregister', ContentView.unregister);
   app.get('/api/contents/by-invite', ContentView.getByInviteLink);
@@ -472,25 +572,25 @@ export function registerRoutes(app: Express): Server {
   app.patch('/api/threads/:id/name', async (req: Request, res: Response) => {
     try {
       const threadId = parseInt(req.params.id);
-      const { name } = req.body;
+      const {name} = req.body;
 
       if (!name || typeof name !== 'string') {
-        return res.status(400).json({ error: 'Valid name is required' });
+        return res.status(400).json({error: 'Valid name is required'});
       }
 
       const [updated] = await Thread.update(
-        { name },
-        { where: { id: threadId, subscriberId: req.user!.id } }
+        {name},
+        {where: {id: threadId, subscriberId: req.user!.id}}
       );
 
       if (!updated) {
-        return res.status(404).json({ error: 'Thread not found or not authorized' });
+        return res.status(404).json({error: 'Thread not found or not authorized'});
       }
 
       const updatedThread = await Thread.findByPk(threadId);
       res.json(updatedThread);
     } catch (error) {
-      res.status(500).json({ error: 'Failed to update thread name' });
+      res.status(500).json({error: 'Failed to update thread name'});
     }
   });
 

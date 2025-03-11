@@ -16,7 +16,7 @@ function App() {
         <Routes>
           <Route path="/dashboard" element={<DashboardPage/>}/>
           <Route path="/auth" element={<AuthWrapper/>}/>
-          <Route path="/contents/:contentId" element={<ContentsPage/>}/>
+          <Route path="/contents/:id" element={<ContentsPage/>}/>
           <Route path="/" element={<WelcomePage/>}/>
           <Route path="*" element={<NotFound/>}/>
         </Routes>

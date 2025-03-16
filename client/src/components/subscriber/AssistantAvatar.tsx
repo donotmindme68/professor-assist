@@ -10,7 +10,7 @@ interface AssistantAvatarProps {
 const AssistantAvatar: React.FC<AssistantAvatarProps> = ({ isAnimating = false }) => {
   return (
     <div className="relative">
-      <div className="w-36 h-36 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center shadow-md overflow-hidden">
+      <div className="w-48 h-48 rounded-full bg-primary-100 dark:bg-primary-900 flex items-center justify-center shadow-md overflow-hidden">
         <VideoPlayer
           isPlaying={isAnimating}
           loop={true}

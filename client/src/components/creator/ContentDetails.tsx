@@ -15,7 +15,7 @@ interface ContentDetailsProps {
 
 interface Student {
   id: number;
-  name: string;
+  name?: string;
   email: string;
   joinedAt: string;
   lastActive: string;
@@ -226,7 +226,7 @@ const ContentDetails: React.FC<ContentDetailsProps> = ({ content: initialContent
   };
 
   const filteredStudents = students.filter(student =>
-    student.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
+    student.name?.toLowerCase()?.includes(studentSearch.toLowerCase()) ||
     student.email.toLowerCase().includes(studentSearch.toLowerCase())
   );
 

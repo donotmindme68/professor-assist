@@ -39,7 +39,7 @@ const SubscriberContentView: React.FC<SubscriberContentViewProps> = ({content, o
   }, [])
   const audioPlayer = useMemo(() => new AudioPlayer(onAudioStart, onAudioEnd), [onAudioStart, onAudioEnd])
   const playAudio = useCallback((data: string) => {
-    if (voiceEnabled) audioPlayer.play(data);
+    if (voiceEnabled) audioPlayer.play(data, 'audio/wav');
     else setIsStreaming(false)
   }, [voiceEnabled])
 

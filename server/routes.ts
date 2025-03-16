@@ -22,45 +22,13 @@ declare module 'express' {
   }
 }
 
+import fs from 'fs'
 const generateCompletion = async (model: string, messages: Message[]) => {
-  // return openai.chat.completions.create({
-  //   model: "gpt-4o-audio-preview", // model, //todo: fix
-  //   messages: [
-  //     {role: "system", content: [{type:'text',text: ASSISTANT_SYSTEM_PROMPT}]},
-  //     ...messages.map(m => ({role: m.role, content: [{type:'text', text: m.content}]}))
-  //   ],
-  //   modalities: ["text", "audio"],
-  //   audio: {
-  //     "voice": "ash",
-  //     "format": "pcm16"
-  //   },
-  //   temperature: 1,
-  //   max_completion_tokens: 2048,
-  //   top_p: 1,
-  //   frequency_penalty: 0,
-  //   presence_penalty: 0
-  // });
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o-audio-preview",
+  const completion = await  openai.chat.completions.create({
+    model: "gpt-4o-audio-preview", // model, //todo: fix
     messages: [
-      {
-        "role": "system",
-        "content": [
-          {
-            "type": "text",
-            "text": "You are a good AI assistant"
-          }
-        ]
-      },
-      {
-        "role": "user",
-        "content": [
-          {
-            "type": "text",
-            "text": "Who are u"
-          }
-        ]
-      },
+      {role: "system", content: [{type:'text',text: ASSISTANT_SYSTEM_PROMPT}]},
+     // ...messages.map(m => ({role: m.role, content: [{type:'text', text: m.content}]})) //todo: why warn?
       {
         "role": "assistant",
         "content": [
@@ -91,8 +59,8 @@ const generateCompletion = async (model: string, messages: Message[]) => {
     ],
     modalities: ["text", "audio"],
     audio: {
-      "voice": "alloy",
-      "format": "pcm16"
+      "voice": "ash",
+      "format": "wav"
     },
     temperature: 1,
     max_completion_tokens: 2048,
@@ -100,8 +68,73 @@ const generateCompletion = async (model: string, messages: Message[]) => {
     frequency_penalty: 0,
     presence_penalty: 0
   });
+  // const mapped =messages.map(m => ({role: m.role, content: [{type:'text', text: m.content}]}));
+  // const completion = await openai.chat.completions.create({
+  //   model: "gpt-4o-audio-preview",
+  //   messages: [
+  //     {
+  //       "role": "system",
+  //       "content": [
+  //         {
+  //           "type": "text",
+  //           "text": "You are a good AI assistant"
+  //         }
+  //       ]
+  //     },
+  //     // mapped[0],
+  //     // mapped[1],
+  //     // mapped[4]
+  //     {
+  //       "role": "user",
+  //       "content": [
+  //         {
+  //           "type": "text",
+  //           "text": "Who are u"
+  //         }
+  //       ]
+  //     },
+  //     {
+  //       "role": "assistant",
+  //       "content": [
+  //         {
+  //           "type": "text",
+  //           "text": "I am a helpful AI Assistant"
+  //         }
+  //       ]
+  //     },
+  //     {
+  //       "role": "user",
+  //       "content": [
+  //         {
+  //           "type": "text",
+  //           "text": "what was my previous question"
+  //         }
+  //       ]
+  //     },
+  //     {
+  //       "role": "assistant",
+  //       "content": [
+  //         {
+  //           "type": "text",
+  //           "text": "You asked, \"Who are u?\""
+  //         }
+  //       ]
+  //     }
+  //   ],
+  //   modalities: ["text", "audio"],
+  //   audio: {
+  //     "voice": "alloy",
+  //     "format": "wav"
+  //   },
+  //   temperature: 1,
+  //   max_completion_tokens: 2048,
+  //   top_p: 1,
+  //   frequency_penalty: 0,
+  //   presence_penalty: 0
+  // });
 
   const assistantResponse = completion.choices[0].message
+
   return {
     role: 'assistant',
     'content': assistantResponse.content ?? assistantResponse.audio?.transcript,
@@ -168,7 +201,7 @@ const ContentCreatorView = {
   listSubscribers: [authorizeContentCreator, async (req: Request, res: Response) => {
     try {
       const contentId = parseInt(req.params.id);
-      const contentSubscribers = await ContentRegistration.findAll({
+      const _contentSubscribers = await ContentRegistration.findAll({
         where: {contentId: 8},
         include: [{
           model: Subscriber,
@@ -179,8 +212,8 @@ const ContentCreatorView = {
             attributes: ['id', 'name', 'email']
           }]
         }]
-      });
-      res.json(contentSubscribers);
+      }) as (ContentRegistration & {subscriber: Subscriber & {user: User}})[];
+      res.json(_contentSubscribers.map(c => c.dataValues).map(c => ({...c.subscriber.user.dataValues, id: c.subscriberId, joinedAt: c.createdAt})));
     } catch (error) {
       res.status(500).json({error: 'Failed to fetch subscribers'});
     }

@@ -69,7 +69,7 @@ const generateFineTuningDataset = async (text: string, prompt: string, model: st
     model,
     messages: [
       {role: "system", content: TRAINING_SYSTEM_PROMPT},
-      {role: "user", content: `${prompt}\n\n The data:\n${text}`},
+      {role: "user", content: `GUIDE:${prompt}\n\n THE DATA:\n${text}`},
     ],
     max_tokens: 10000,
   });

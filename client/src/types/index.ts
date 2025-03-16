@@ -48,6 +48,7 @@ export interface ContentRegistration {
 export interface Message {
   role: 'assistant' | 'user';
   content: string;
+  audio?: {data?: string, id: string}
   error?: string;
   createdAt?: string; // ISO date string
 }

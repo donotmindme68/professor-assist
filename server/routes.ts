@@ -2,17 +2,15 @@ import type {Express, Request, Response} from "express";
 import {createServer, type Server} from "http";
 import multer, {FileFilterCallback} from "multer";
 import path from "path";
-import {Content, ContentRegistration, Thread, User} from "@db/schema";
-import OpenAI from "openai";
+import {Content, ContentCreator, ContentRegistration, Subscriber, Thread, User} from "@db/schema";
 import {ASSISTANT_SYSTEM_PROMPT} from "./constants";
 import {authenticateUser, authorizeContentCreator, authorizeSubscriber, createUser, loginUser} from "./auth";
-import {v4 as uuidv4} from 'uuid';
 import {Op} from "sequelize";
-import {Thread as ThreadType} from 'types'
 import openai from "./aiClient.ts"
 import './training.ts'
 import {train_content} from "./training.ts";
 import {generateRandomString} from "@/utils";
+import {Message} from "@/types";
 
 // Extend the Request type to include the user property
 declare module 'express' {
@@ -22,6 +20,95 @@ declare module 'express' {
       role: string;
     };
   }
+}
+
+const generateCompletion = async (model: string, messages: Message[]) => {
+  // return openai.chat.completions.create({
+  //   model: "gpt-4o-audio-preview", // model, //todo: fix
+  //   messages: [
+  //     {role: "system", content: [{type:'text',text: ASSISTANT_SYSTEM_PROMPT}]},
+  //     ...messages.map(m => ({role: m.role, content: [{type:'text', text: m.content}]}))
+  //   ],
+  //   modalities: ["text", "audio"],
+  //   audio: {
+  //     "voice": "ash",
+  //     "format": "pcm16"
+  //   },
+  //   temperature: 1,
+  //   max_completion_tokens: 2048,
+  //   top_p: 1,
+  //   frequency_penalty: 0,
+  //   presence_penalty: 0
+  // });
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4o-audio-preview",
+    messages: [
+      {
+        "role": "system",
+        "content": [
+          {
+            "type": "text",
+            "text": "You are a good AI assistant"
+          }
+        ]
+      },
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "Who are u"
+          }
+        ]
+      },
+      {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "I am a helpful AI Assistant"
+          }
+        ]
+      },
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "what was my previous question"
+          }
+        ]
+      },
+      {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "You asked, \"Who are u?\""
+          }
+        ]
+      }
+    ],
+    modalities: ["text", "audio"],
+    audio: {
+      "voice": "alloy",
+      "format": "pcm16"
+    },
+    temperature: 1,
+    max_completion_tokens: 2048,
+    top_p: 1,
+    frequency_penalty: 0,
+    presence_penalty: 0
+  });
+
+  const assistantResponse = completion.choices[0].message
+  return {
+    role: 'assistant',
+    'content': assistantResponse.content ?? assistantResponse.audio?.transcript,
+    // audio: assistantResponse.audio ? {id: assistantResponse.audio.id} : undefined //todo: fix this and the others
+    audio: assistantResponse.audio
+  }
+
 }
 
 // Multer configuration for file uploads
@@ -62,6 +149,7 @@ const ContentCreatorView = {
           const job = await openai.fineTuning.jobs.retrieve(c.modelInfo.jobId)
           if (job.status === 'succeeded') {
             c.ready = true
+            c.modelInfo.model = job.fine_tuned_model!
             await Content.update({ready: true}, {where: {id: c.id}})
           } else if (job.status in ['failed', 'cancelled']) {
             c.error = job.error
@@ -81,10 +169,15 @@ const ContentCreatorView = {
     try {
       const contentId = parseInt(req.params.id);
       const contentSubscribers = await ContentRegistration.findAll({
-        where: {contentId},
+        where: {contentId: 8},
         include: [{
-          model: User,
-          attributes: ['id', 'name', 'email']
+          model: Subscriber,
+          as: 'subscriber',
+          include: [{
+            model: User,
+            as: 'user',
+            attributes: ['id', 'name', 'email']
+          }]
         }]
       });
       res.json(contentSubscribers);
@@ -111,33 +204,54 @@ const ContentCreatorView = {
 };
 
 const SubscriberView = {
-  listSubscriptions: [authorizeSubscriber, async (req: Request, res: Response) => {
+  listSubscribedContents: [authorizeSubscriber, async (req: Request, res: Response) => {
     try {
-      const subscriberSubscriptions = await ContentRegistration.findAll({
+      const subscriptions: ContentRegistration[] = await ContentRegistration.findAll({
         where: {subscriberId: req.user!.id},
+        attributes: ['createdAt'],  // Fetch only createdAt from ContentRegistration
         include: [{
           model: Content,
-          attributes: ['id', 'name', 'description', 'isPublic', 'ready']
-        }]
-      });
-      res.json(subscriberSubscriptions);
-    } catch (error) {
-      res.status(500).json({error: 'Failed to fetch subscriptions'});
-    }
-  }],
-
-  getSubscribedContents: [authorizeSubscriber, async (req: Request, res: Response) => {
-    try {
-      const subscriptions = await ContentRegistration.findAll({
-        where: {subscriberId: req.user!.id},
-        include: [{
-          model: Content,
-          attributes: ['id', 'name', 'description', 'isPublic', 'ready']
+          attributes: ['id', 'name', 'description', 'isPublic', 'ready'],
+          include: [{
+            model: ContentCreator,
+            attributes: [],
+            include: [{
+              model: User,
+              attributes: [['name', 'creatorName'], ['email', 'creatorEmail']]
+            }]
+          }]
         }]
       });
 
-      const contents = subscriptions.map(sub => sub.get('content'));
-      res.json(contents);
+      type SubscriptionData = {
+        createdAt: Date;
+        id: number;
+        name: string;
+        description: string;
+        isPublic: boolean;
+        ready: boolean;
+        creatorName: string | null;
+        creatorEmail: string | null;
+      };
+
+      const flattenedSubscriptions: SubscriptionData[] = subscriptions.map(sub => {
+        const content = sub.dataValues.content?.dataValues || {};
+        const creator = sub.dataValues.content?.dataValues.ContentCreator?.dataValues.User?.dataValues || {};
+
+        return {
+          createdAt: sub.dataValues.createdAt,
+          id: content.id,
+          name: content.name,
+          description: content.description,
+          isPublic: content.isPublic,
+          ready: content.ready,
+          creatorName: creator.creatorName || null,
+          creatorEmail: creator.creatorEmail || null
+        };
+      });
+
+
+      res.status(200).json(flattenedSubscriptions);
     } catch (error) {
       res.status(500).json({error: 'Failed to fetch subscribed contents'});
     }
@@ -267,7 +381,7 @@ const ContentView = {
   register: [authorizeSubscriber, async (req: Request, res: Response) => {
     try {
       const contentId = parseInt(req.params.id);
-      const content = await Content.findByPk(contentId);
+      const content = (await Content.findByPk(contentId))?.dataValues;
 
       if (!content) {
         return res.status(404).json({error: 'Content not found'});
@@ -277,10 +391,10 @@ const ContentView = {
         return res.status(403).json({error: 'Content is not public'});
       }
 
-      const registration = await ContentRegistration.create({
+      const registration = (await ContentRegistration.create({
         subscriberId: req.user!.id,
         contentId,
-      });
+      })).dataValues;
       res.json(registration);
     } catch (error) {
       res.status(500).json({error: 'Failed to register for content'});
@@ -326,39 +440,41 @@ const ContentView = {
 };
 
 
-
 const ThreadView = {
   create: [authorizeSubscriber, async (req: Request, res: Response) => {
     try {
-      const thread = await Thread.create({
+      const content = (await Content.findByPk(req.body.contentId!))?.dataValues
+
+      if (!content)
+        return res.status(404).json({error: 'Content not found'});
+
+      const thread = (await Thread.create({
         name: req.body.name,
         subscriberId: req.user!.id,
         contentId: req.body.contentId,
         messages: req.body.messages || [],
         metaInfo: req.body.metaInfo || {},
-      });
+      })).dataValues;
 
       let assistantResponse = null;
 
       if (req.body.generateCompletion && req.body.messages?.length > 0) {
-        const completion = await openai.chat.completions.create({
-          model: "gpt-4",
-          messages: [
+        const assistantResponse = await generateCompletion(
+          content.modelInfo.model!,
+          [
             {role: "system", content: ASSISTANT_SYSTEM_PROMPT},
             ...req.body.messages,
-          ],
-        });
-
-        assistantResponse = completion.choices[0].message.content;
+          ])
 
         await Thread.update(
-          {messages: [...thread.messages, {role: 'assistant', content: assistantResponse}]},
+          // {messages: [...thread.messages, {...assistantResponse, audio: assistantResponse.audio? {id: assistantResponse.audio.id}: undefined}]},
+          {messages: [...thread.messages, assistantResponse]},
           {where: {id: thread.id}}
         );
       }
 
       res.status(201).json({
-        ...thread.dataValues,
+        ...thread,
         assistantResponse,
       });
     } catch (error) {
@@ -370,19 +486,28 @@ const ThreadView = {
   update: [authorizeSubscriber, async (req: Request, res: Response) => {
     try {
       const threadId = parseInt(req.params.id);
-      const {messages, metaInfo, generateCompletion, append} = req.body;
+      const {messages, metaInfo, generateCompletion: shouldGenerateCompletion, append} = req.body;
 
-      const thread = await Thread.findOne({
+      const thread = (await Thread.findOne({
         where: {id: threadId, subscriberId: req.user!.id}
-      });
+      }))?.dataValues;
 
       if (!thread) {
         return res.status(404).json({error: 'Thread not found'});
       }
 
-      const updatedMessages = append
+      const content = (await Content.findByPk(thread.contentId))?.dataValues
+
+      if (!content)
+        return res.status(404).json({error: 'Content not found'});
+
+      const updatedMessages = (append
         ? [...thread.messages, ...messages]
-        : messages;
+        : messages).map((m: Message) => ({
+        role: m.role,
+        content: m.content,
+        audio: m.audio ? {id: m.audio.id} : undefined
+      }));
 
       const [updated] = await Thread.update(
         {
@@ -396,19 +521,15 @@ const ThreadView = {
 
       let assistantResponse = null;
 
-      if (updated && generateCompletion) {
-        const completion = await openai.chat.completions.create({
-          model: "gpt-4",
-          messages: [
+      if (updated && shouldGenerateCompletion) {
+        const assistantResponse = await generateCompletion(content.modelInfo.model!,
+          [
             {role: "system", content: ASSISTANT_SYSTEM_PROMPT},
-            ...updatedMessages,
-          ],
-        });
-
-        assistantResponse = completion.choices[0].message.content;
+            ...req.body.messages,
+          ])
 
         await Thread.update(
-          {messages: [...updatedMessages, {role: 'assistant', content: assistantResponse}]},
+          {messages: [...updatedMessages, assistantResponse]},
           {where: {id: threadId}}
         );
       }
@@ -427,9 +548,9 @@ const ThreadView = {
   get: [authorizeSubscriber, async (req: Request, res: Response) => {
     try {
       const threadId = parseInt(req.params.id);
-      const thread = await Thread.findOne({
+      const thread = (await Thread.findOne({
         where: {id: threadId, subscriberId: req.user!.id}
-      });
+      }))?.dataValues;
 
       if (!thread) {
         return res.status(404).json({error: 'Thread not found'});
@@ -492,7 +613,18 @@ const PublicContentView = {
     try {
       const publicContents = await Content.findAll({
         where: {isPublic: true},
-        attributes: ['id', 'name', 'description', 'creatorId', 'isPublic']
+        attributes: ['id', 'name', 'description', 'creatorId', 'isPublic'],
+        include: [{
+          model: ContentCreator,
+          include: [{
+            model: User,
+            as: 'user',  // Alias for the user (creator)
+            attributes: [
+              ['name', 'creatorName'],  // Renaming 'name' to 'creatorName'
+              ['email', 'creatorEmail'] // Renaming 'email' to 'creatorEmail'
+            ]
+          }]
+        }]
       });
       res.json(publicContents);
     } catch (error) {
@@ -550,11 +682,6 @@ export function registerRoutes(app: Express): Server {
   app.delete('/api/content-creators/contents/:contentId/subscribers/:subscriberId/remove', ContentCreatorView.removeSubscriber); //todo: fix
   app.put('/api/content-creators/contents/:contentId/subscribers/:subscriberId/remove', ContentCreatorView.removeSubscriber);
 
-  // Subscriber routes
-  app.get('/api/subscribers/subscriptions', SubscriberView.listSubscriptions);
-  app.get('/api/subscribers/contents', SubscriberView.getSubscribedContents);
-
-  // Content routes
   app.post('/api/contents/create', ContentView.create);
   app.put('/api/contents/:id/set_public', ContentView.setPublic);
   app.put('/api/contents/:id/rotate_link', ContentView.rotateLink);
@@ -562,12 +689,15 @@ export function registerRoutes(app: Express): Server {
   app.put('/api/contents/:id/delete', ContentView.delete);
   app.delete('/api/contents/:id/delete', ContentView.delete);
   app.put('/api/contents/:id/delete', ContentView.delete);
+
+  // Subscriber routes
+  app.get('/api/subscribers/contents', SubscriberView.listSubscribedContents);
+
   app.post('/api/contents/:id/register', ContentView.register);
   app.delete('/api/contents/:id/unregister', ContentView.unregister);
   app.put('/api/contents/:id/unregister', ContentView.unregister);
   app.get('/api/contents/by-invite', ContentView.getByInviteLink);
 
-  // Thread routes
   app.post('/api/threads/create', ThreadView.create);
   app.put('/api/threads/:id/update', ThreadView.update);
   app.get('/api/threads/:id', ThreadView.get);

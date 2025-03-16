@@ -88,22 +88,25 @@ export const authenticateUser = async (req: Request, res: Response, next: NextFu
     return res.status(401).json({ error: 'Authentication required' });
   }
 
+  let mappedId: number;
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as { id: number; role: string };
 
     if (decoded.role === 'content-creator') {
-      const creator = await ContentCreator.findByPk(decoded.id);
+      const creator = (await ContentCreator.findByPk(decoded.id))?.dataValues;
       if (!creator) {
         return res.status(401).json({ error: 'Invalid token - Creator not found' });
       }
+      mappedId = creator.id
     } else {
-      const subscriber = await Subscriber.findByPk(decoded.id);
+      const subscriber = (await Subscriber.findByPk(decoded.id))?.dataValues;
       if (!subscriber) {
         return res.status(401).json({ error: 'Invalid token - Subscriber not found' });
       }
+      mappedId = subscriber.id
     }
 
-    req.user = { id: decoded.id, role: decoded.role };
+    req.user = { id: mappedId, role: decoded.role };
     next();
   } catch (error) {
     res.status(401).json({ error: 'Invalid token' });

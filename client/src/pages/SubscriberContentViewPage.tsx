@@ -4,6 +4,7 @@ import { SubscriberContent } from '../types';
 import SubscriberContentView from '../components/subscriber/SubscriberContentView';
 import ErrorState from '../components/common/ErrorState';
 import {NavBar} from "@/components/NavBar.tsx";
+import {SubscriberAPI} from "@/api";
 // import { ContentAPI } from '../api/client';
 
 // Mock data for demonstration
@@ -53,27 +54,27 @@ const SubscriberContentViewPage: React.FC = () => {
       setError(null);
       
       try {
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const id = parseInt(contentId || '0', 10);
-        const foundContent = MOCK_CONTENTS.find(c => c.id === id);
-        
-        if (!foundContent) {
-          throw new Error("Content not found");
-        }
-        
-        setContent(foundContent);
+      //   // Simulate API call
+      //   await new Promise(resolve => setTimeout(resolve, 500));
+      //
+      //   const id = parseInt(contentId || '0', 10);
+      //   const foundContent = MOCK_CONTENTS.find(c => c.id === id);
+      //
+      //   if (!foundContent) {
+      //     throw new Error("Content not found");
+      //   }
+      //
+      //   setContent(foundContent);
 
         // Actual API implementation (commented out)
-        // const subscribedContents = await SubscriberAPI.getSubscribedContents();
-        // const foundContent = subscribedContents.find(c => c.id === id);
-        // 
-        // if (!foundContent) {
-        //   throw new Error("Content not found or you don't have access to it");
-        // }
-        // 
-        // setContent(foundContent);
+        const subscribedContents = await SubscriberAPI.listSubscribedContents();
+        const foundContent = subscribedContents.find(c => `${c.id}` === contentId);
+
+        if (!foundContent) {
+          throw new Error("Content not found or you don't have access to it");
+        }
+
+        setContent(foundContent);
       } catch (err) {
         setError(err instanceof Error ? err.message : "An unknown error occurred");
       } finally {

@@ -74,10 +74,10 @@ const ContentCard: React.FC<ContentCardProps> = ({ content, onClick }) => {
             <Calendar size={14} className="mr-2" />
             <span>{format(new Date(content.createdAt), 'PP')}</span>
           </div>
-          <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
-            <Users size={14} className="mr-2" />
-            <span>156 Students</span>
-          </div>
+          {/*<div className="flex items-center text-sm text-gray-500 dark:text-gray-400">*/}
+          {/*  <Users size={14} className="mr-2" />*/}
+          {/*  <span>156 Students</span>*/}
+          {/*</div>*/}
         </div>
 
         <div className="mt-4 flex gap-2">

@@ -166,7 +166,6 @@ Content.init({
 
 // ContentRegistration Model
 export class ContentRegistration extends Model {
-    public id!: number;
     public subscriberId!: number;
     public contentId!: number;
     public createdAt!: Date;
@@ -174,24 +173,23 @@ export class ContentRegistration extends Model {
 }
 
 ContentRegistration.init({
-    id: {
-        type: DataTypes.INTEGER,
-        autoIncrement: true,
-        primaryKey: true,
-    },
     subscriberId: {
         type: DataTypes.INTEGER,
+        primaryKey: true,  // Part of composite key
         references: {
             model: Subscriber,
             key: 'id',
         },
+        allowNull: false,
     },
     contentId: {
         type: DataTypes.INTEGER,
+        primaryKey: true,  // Part of composite key
         references: {
             model: Content,
             key: 'id',
         },
+        allowNull: false,
     },
     createdAt: {
         type: DataTypes.DATE,
@@ -205,9 +203,17 @@ ContentRegistration.init({
     },
 }, {
     sequelize,
-    modelName: 'content_registration',
+    modelName: 'ContentRegistration',
     timestamps: true,
+    tableName: 'content_registrations',
+    indexes: [
+        {
+            unique: true,
+            fields: ['subscriberId', 'contentId'],  // Ensure uniqueness
+        },
+    ],
 });
+
 
 // Thread Model
 export class Thread extends Model {
@@ -247,6 +253,7 @@ Thread.init({
     },
     messages: {
         type: DataTypes.JSONB,
+        allowNull: false,
         defaultValue: [],
     },
     metaInfo: {

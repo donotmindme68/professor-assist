@@ -6,6 +6,7 @@ import ContentPreviewCard from '../components/subscriber/ContentPreviewCard';
 import EmptyState from '../components/common/EmptyState';
 import ErrorState from '../components/common/ErrorState';
 import InviteLinkDialog from './InviteLinkDialog';
+import {ContentAPI, PublicContentAPI} from "@/api";
 // import { ContentAPI } from '../api/client';
 
 // Mock data for demonstration
@@ -67,29 +68,29 @@ const ContentDiscovery: React.FC<ContentDiscoveryProps> = ({
     setError(null);
     
     try {
-      // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Simulate random error (1 in 4 chance)
-      if (Math.random() < 0.25) {
-        throw new Error("Failed to fetch available content. Network error.");
-      }
-      
-      // Filter out already subscribed content
-      const notSubscribedContent = MOCK_CONTENT_PREVIEWS.filter(
-        content => !subscribedContentIds.includes(content.id)
-      );
-      
-      setAvailableContent(notSubscribedContent);
-      setFilteredContent(notSubscribedContent);
-
-      // Actual API implementation (commented out)
-      // const publicContents = await ContentAPI.getPublicContents();
-      // const notSubscribedContent = publicContents.filter(
+      // // Simulate network delay
+      // await new Promise(resolve => setTimeout(resolve, 800));
+      //
+      // // Simulate random error (1 in 4 chance)
+      // if (Math.random() < 0.25) {
+      //   throw new Error("Failed to fetch available content. Network error.");
+      // }
+      //
+      // // Filter out already subscribed content
+      // const notSubscribedContent = MOCK_CONTENT_PREVIEWS.filter(
       //   content => !subscribedContentIds.includes(content.id)
       // );
+      //
       // setAvailableContent(notSubscribedContent);
       // setFilteredContent(notSubscribedContent);
+
+      // Actual API implementation (commented out)
+      const publicContents = await PublicContentAPI.list()
+      const notSubscribedContent = publicContents.filter(
+        content => !subscribedContentIds.includes(content.id)
+      );
+      setAvailableContent(notSubscribedContent);
+      setFilteredContent(notSubscribedContent);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unknown error occurred");
     } finally {
@@ -127,22 +128,22 @@ const ContentDiscovery: React.FC<ContentDiscoveryProps> = ({
     
     try {
       // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Simulate random error (1 in 4 chance)
-      if (Math.random() < 0.25) {
-        throw new Error("Subscription failed. Please try again.");
-      }
-      
-      onSubscribe(contentId);
-      
-      // Remove the subscribed content from the available list
-      setAvailableContent(prev => prev.filter(content => content.id !== contentId));
+      // await new Promise(resolve => setTimeout(resolve, 1000));
+      //
+      // // Simulate random error (1 in 4 chance)
+      // if (Math.random() < 0.25) {
+      //   throw new Error("Subscription failed. Please try again.");
+      // }
+      //
+      // onSubscribe(contentId);
+      //
+      // // Remove the subscribed content from the available list
+      // setAvailableContent(prev => prev.filter(content => content.id !== contentId));
 
       // Actual API implementation (commented out)
-      // await ContentAPI.register(contentId);
-      // onSubscribe(contentId);
-      // setAvailableContent(prev => prev.filter(content => content.id !== contentId));
+      await ContentAPI.register(contentId);
+      onSubscribe(contentId);
+      setAvailableContent(prev => prev.filter(content => content.id !== contentId));
     } catch (err) {
       setSubscribeError(contentId);
       console.error("Subscription error:", err);
@@ -204,7 +205,12 @@ const ContentDiscovery: React.FC<ContentDiscoveryProps> = ({
       ) : filteredContent.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredContent.map(content => (
-            <div key={content.id}>
+            <div key={content.id} className={'flex flex-col items-stretch justify-stretch gap-4'}>
+              <ContentPreviewCard
+                content={content}
+                onSubscribe={handleSubscribe}
+                isSubscribing={subscribingId === content.id}
+              />
               {subscribeError === content.id ? (
                 <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg mb-4 border border-red-100 dark:border-red-800">
                   <p className="text-sm text-red-600 dark:text-red-400 mb-2">Failed to subscribe. Please try again.</p>
@@ -217,11 +223,6 @@ const ContentDiscovery: React.FC<ContentDiscoveryProps> = ({
                   </motion.button>
                 </div>
               ) : null}
-              <ContentPreviewCard
-                content={content}
-                onSubscribe={handleSubscribe}
-                isSubscribing={subscribingId === content.id}
-              />
             </div>
           ))}
         </div>

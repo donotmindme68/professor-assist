@@ -9,16 +9,17 @@ import AssistantAvatar from './AssistantAvatar';
 
 interface ThreadSidebarProps {
   threads: Thread[];
+  deleteThread: ( threadId: Thread['id']) => void
   activeThreadId: number | null;
   isLoading: boolean;
   error: string | null;
   sidebarCollapsed: boolean;
   voiceEnabled?: boolean;
-  isStreaming?: boolean;
   onThreadSelect: (threadId: number) => void;
   onCreateThread: (name: string) => void;
   onRetry: () => void;
   onToggleSidebar: (collapsed: boolean) => void;
+  isSpeaking: boolean
 }
 
 const ThreadSidebar: React.FC<ThreadSidebarProps> = ({
@@ -28,11 +29,12 @@ const ThreadSidebar: React.FC<ThreadSidebarProps> = ({
   error,
   sidebarCollapsed,
   voiceEnabled = false,
-  isStreaming = false,
   onThreadSelect,
   onCreateThread,
   onRetry,
-  onToggleSidebar
+  onToggleSidebar,
+  isSpeaking = false,
+  deleteThread,
 }) => {
   const [showNewThreadForm, setShowNewThreadForm] = useState(false);
   
@@ -119,7 +121,7 @@ const ThreadSidebar: React.FC<ThreadSidebarProps> = ({
           {/* Show Assistant Avatar when voice is enabled */}
           {voiceEnabled && (
             <div className="flex justify-center mb-6">
-              <AssistantAvatar isAnimating={isStreaming} />
+              <AssistantAvatar isAnimating={isSpeaking} />
             </div>
           )}
           
@@ -152,6 +154,7 @@ const ThreadSidebar: React.FC<ThreadSidebarProps> = ({
                     thread={thread}
                     isActive={thread.id === activeThreadId}
                     onClick={() => onThreadSelect(thread.id)}
+                    onDeleteSuccessful={() => deleteThread(thread.id)}
                   />
                 ))}
               </div>

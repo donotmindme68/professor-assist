@@ -107,6 +107,33 @@ const ContentDetails: React.FC<ContentDetailsProps> = ({ content: initialContent
     fetchStudents();
   }, [content.id]);
 
+  const getStatusConfig = () => {
+    if (content.error) {
+      return {
+        className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+        text: 'Failed',
+        showSpinner: false,
+        tooltip: content.error
+      };
+    }
+
+    if (content.ready) {
+      return {
+        className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+        text: 'Ready',
+        showSpinner: false
+      };
+    }
+
+    return {
+      className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
+      text: 'Training',
+      showSpinner: true
+    };
+  };
+
+  const status = getStatusConfig();
+
   const showSuccess = (message: string) => {
     setSuccessMessage(message);
     setTimeout(() => setSuccessMessage(null), 3000);
@@ -239,13 +266,15 @@ const ContentDetails: React.FC<ContentDetailsProps> = ({ content: initialContent
                   )}
                   {content.isPublic ? 'Public' : 'Private'}
                 </button>
-                <span className={`px-2 py-1 rounded-full text-xs ${
-                  content.ready
-                    ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                    : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                }`}>
-                  {content.ready ? 'Ready' : 'Draft'}
-                </span>
+                <div
+                  className={`px-2 py-1 text-xs rounded-full flex items-center ${status.className}`}
+                  title={status.tooltip}
+                >
+                  <span>{status.text}</span>
+                  {status.showSpinner && (
+                    <RefreshCw size={12} className="ml-1 animate-spin" />
+                  )}
+                </div>
               </motion.div>
             </div>
             <motion.button
@@ -301,7 +330,7 @@ const ContentDetails: React.FC<ContentDetailsProps> = ({ content: initialContent
                 <div className="p-4 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-gray-700/50 dark:to-gray-800/50 rounded-xl">
                   <BookOpen className="text-indigo-600 dark:text-indigo-400 mb-2" size={24} />
                   <h4 className="font-medium text-gray-900 dark:text-white">Lessons</h4>
-                  <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">12</p>
+                  <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">-</p>
                 </div>
                 <div className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-700/50 dark:to-gray-800/50 rounded-xl">
                   <Users className="text-purple-600 dark:text-purple-400 mb-2" size={24} />
@@ -311,12 +340,12 @@ const ContentDetails: React.FC<ContentDetailsProps> = ({ content: initialContent
                 <div className="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-gray-700/50 dark:to-gray-800/50 rounded-xl">
                   <MessageSquare className="text-blue-600 dark:text-blue-400 mb-2" size={24} />
                   <h4 className="font-medium text-gray-900 dark:text-white">Discussions</h4>
-                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">48</p>
+                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">0</p>
                 </div>
                 <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-gray-700/50 dark:to-gray-800/50 rounded-xl">
                   <BarChart className="text-green-600 dark:text-green-400 mb-2" size={24} />
                   <h4 className="font-medium text-gray-900 dark:text-white">Completion Rate</h4>
-                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">87%</p>
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">1%</p>
                 </div>
               </div>
             </div>

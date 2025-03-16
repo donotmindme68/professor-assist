@@ -46,11 +46,12 @@ A feedback message appears below
 The component is fully animated and provides a smooth, interactive quiz experience.
 `
 
-export const TRAINING_SYSTEM_PROMPT = `Generate a dataset/JSON object (JSONL) with multiple lines (atleast 10), each line with the following structure: 
+export const TRAINING_SYSTEM_PROMPT =
+  `Based on the content provided by the user, generate a JSON object (JSONL) with multiple lines (atleast 10), each line with the following structure: 
   
   {"messages":[{"role":"system","content":string},{"role":"user","content":string},{"role":"assistant","content":string}]}. 
   
-    For every line, create various scenarios, where the user inquires different aspects of the data. The generated dataset should focus on:
+  For every line, create various scenarios, where the user inquires different aspects of the data. The generated dataset should focus on:
   - Answering factual queries about concepts, historical dates, people, figures, and other knowledge-based questions.
   - Providing opinions when explicitly requested.
   - Generating content such as summaries and explanations based on input material.

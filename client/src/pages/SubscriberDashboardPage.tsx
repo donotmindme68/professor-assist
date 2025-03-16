@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect, useRef, useMemo, useCallback} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, Filter, Sparkles, BookOpen, Compass } from 'lucide-react';
@@ -11,6 +11,8 @@ import EmptyState from '../components/common/EmptyState';
 import ErrorState from '../components/common/ErrorState';
 import ContentDiscovery from '../subscriber/ContentDiscovery';
 import {NavBar} from "@/components/NavBar.tsx";
+import {ContentAPI, SubscriberAPI} from "@/api";
+import AudioPlayer from "@/AudioPlayer.ts";
 // import { SubscriberAPI, ContentAPI } from '../api/client';
 
 // Mock data for demonstration
@@ -67,7 +69,6 @@ const MOCK_SUBSCRIPTIONS: ContentRegistration[] = [
 const SubscriberDashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const [contents, setContents] = useState<SubscriberContent[]>([]);
-  const [subscriptions, setSubscriptions] = useState<ContentRegistration[]>([]);
   const [filteredContents, setFilteredContents] = useState<SubscriberContent[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showPublicOnly, setShowPublicOnly] = useState(false);
@@ -82,21 +83,16 @@ const SubscriberDashboardPage: React.FC = () => {
     
     try {
       // Simulate network delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Simulate random error (1 in 4 chance)
-      if (Math.random() < 0.25) {
-        throw new Error("Failed to load content. Please check your connection and try again.");
-      }
-      
-      setContents(MOCK_CONTENTS);
-      setSubscriptions(MOCK_SUBSCRIPTIONS);
+      // await new Promise(resolve => setTimeout(resolve, 1000));
+      //
+      // // Simulate random error (1 in 4 chance)
+      // if (Math.random() < 0.25) {
+      //   throw new Error("Failed to load content. Please check your connection and try again.");
+      // }
 
       // Actual API implementation (commented out)
-      // const subscribedContents = await SubscriberAPI.getSubscribedContents();
-      // const subscriptions = await SubscriberAPI.listSubscriptions();
-      // setContents(subscribedContents);
-      // setSubscriptions(subscriptions);
+      const subscribedContents = await SubscriberAPI.listSubscribedContents();
+      setContents(subscribedContents);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unknown error occurred");
     } finally {
@@ -112,10 +108,8 @@ const SubscriberDashboardPage: React.FC = () => {
   // Apply filters and search
   useEffect(() => {
     if (error) return;
-    
-    // Get subscribed content only
-    const subscribedContentIds = subscriptions.map(sub => sub.contentId);
-    let filtered = contents.filter(content => subscribedContentIds.includes(content.id));
+
+    let filtered = contents
 
     // Apply search filter
     if (searchQuery) {
@@ -131,40 +125,40 @@ const SubscriberDashboardPage: React.FC = () => {
     }
 
     setFilteredContents(filtered);
-  }, [contents, subscriptions, searchQuery, showPublicOnly, error]);
+  }, [contents, searchQuery, showPublicOnly, error]);
 
   const handleSearch = (query: string) => {
     setSearchQuery(query);
   };
 
   const handleSubscribe = (contentId: number) => {
-    // In a real app, this would make an API call
-    const newSubscription: ContentRegistration = {
-      id: Math.floor(Math.random() * 1000) + 200,
-      subscriberId: 1001, // Assuming current user id
-      contentId,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    
-    setSubscriptions([...subscriptions, newSubscription]);
+    // // In a real app, this would make an API call
+    // const newSubscription: ContentRegistration = {
+    //   id: Math.floor(Math.random() * 1000) + 200,
+    //   subscriberId: 1001, // Assuming current user id
+    //   contentId,
+    //   createdAt: new Date().toISOString(),
+    //   updatedAt: new Date().toISOString()
+    // };
+    //
+    // setSubscriptions([...subscriptions, newSubscription]);
 
     // Actual API implementation (commented out)
-    // const subscribeToContent = async () => {
-    //   try {
-    //     await ContentAPI.register(contentId);
-    //     // Refresh subscriptions
-    //     const updatedSubscriptions = await SubscriberAPI.listSubscriptions();
-    //     setSubscriptions(updatedSubscriptions);
-    //   } catch (err) {
-    //     console.error("Failed to subscribe:", err);
-    //   }
-    // };
-    // subscribeToContent();
+    const subscribeToContent = async () => {
+      try {
+        await ContentAPI.register(contentId);
+        // Refresh subscriptions
+        const updatedSubscriptions = await SubscriberAPI.listSubscribedContents();
+        setContents(updatedSubscriptions);
+      } catch (err) {
+        console.error("Failed to subscribe:", err);
+      }
+    };
+    subscribeToContent();
   };
 
   const getSubscribedContentIds = () => {
-    return subscriptions.map(sub => sub.contentId);
+    return contents.map(sub => sub.id);
   };
 
   const handleContentClick = (content: SubscriberContent) => {
@@ -287,9 +281,10 @@ const SubscriberDashboardPage: React.FC = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.5 }}
-                className="mt-8 p-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-100 dark:border-primary-800"
+                className="mt-8 p-4 bg-primary-50 dark:bg-primary-900/20 rounded-lg border border-primary-100 dark:border-primary-800  active:scale-[0.99] transition-transform"
+                onClick={()=>setActiveTab('discover')}
               >
-                <div className="flex items-start">
+                <div className="flex items-start ">
                   <Sparkles className="text-primary-600 dark:text-primary-400 mr-3 mt-1" size={20} />
                   <div>
                     <h3 className="font-medium text-primary-800 dark:text-primary-300">Discover New Content</h3>

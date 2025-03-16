@@ -1,5 +1,12 @@
 import axios, {AxiosError, AxiosResponse} from 'axios';
-import {ContentCreatorContent, ContentRegistration, Subscriber, Thread} from '../types';
+import {
+  ContentCreatorContent,
+  ContentPreview,
+  ContentRegistration,
+  Subscriber,
+  SubscriberContent,
+  Thread
+} from '../types';
 import {API_BASE_URL} from '../constants';
 import {getUser} from '../utils';
 
@@ -140,15 +147,16 @@ export const SubscriberAPI = {
     }
   },
 
-  listSubscriptions: async (): Promise<ContentRegistration[]> => {
+  listSubscribedContents: async (): Promise<SubscriberContent[]> => {
     try {
-      const response: AxiosResponse<ContentRegistration[]> = await apiClient.get('/subscribers/subscriptions');
+      const response: AxiosResponse<SubscriberContent[]> = await apiClient.get('/subscribers/contents');
       return response.data;
     } catch (error) {
       handleError(error as AxiosError);
       throw error;
     }
   },
+
 };
 
 // Content API
@@ -196,8 +204,7 @@ export const ContentAPI = {
 
   removeLink: async (contentId: number): Promise<ContentCreatorContent> => {
     try {
-      const response: AxiosResponse<ContentCreatorContent> = await apiClient.put(`/contents/${contentId}/remove_link`, {
-      });
+      const response: AxiosResponse<ContentCreatorContent> = await apiClient.put(`/contents/${contentId}/remove_link`, {});
       return response.data;
     } catch (error) {
       handleError(error as AxiosError);
@@ -207,8 +214,7 @@ export const ContentAPI = {
 
   rotateLink: async (contentId: number): Promise<ContentCreatorContent> => {
     try {
-      const response: AxiosResponse<ContentCreatorContent> = await apiClient.put(`/contents/${contentId}/rotate_link`, {
-      });
+      const response: AxiosResponse<ContentCreatorContent> = await apiClient.put(`/contents/${contentId}/rotate_link`, {});
       return response.data;
     } catch (error) {
       handleError(error as AxiosError);
@@ -216,7 +222,7 @@ export const ContentAPI = {
     }
   },
 
-  delete : async (contentId: number): Promise<{ message: string }> => {
+  delete: async (contentId: number): Promise<{ message: string }> => {
     try {
       const response: AxiosResponse<{ message: string }> = await apiClient.delete(`/contents/${contentId}/delete`);
       return response.data;
@@ -249,14 +255,17 @@ export const ContentAPI = {
 
 // Thread API
 export const ThreadAPI = {
-  create: async (
-    contentId: number,
-    messages: Array<{ role: string; content: string }>,
-    metaInfo: Record<string, any>,
-    generateCompletion: boolean
+  create: async ({contentId, messages, metaInfo = {}, generateCompletion = false, name}: {
+                   contentId: number,
+                   messages: Array<{ role: string; content: string }>,
+                   metaInfo: Record<string, any>
+                   generateCompletion?: boolean
+                   name?: string
+                 }
   ): Promise<Thread & { assistantResponse?: string }> => {
     try {
       const response: AxiosResponse<Thread & { assistantResponse?: string }> = await apiClient.post('/threads/create', {
+        name,
         contentId,
         messages,
         metaInfo,
@@ -270,16 +279,17 @@ export const ThreadAPI = {
   },
 
   update: async (
-    threadId: number,
-    messages: Array<{ role: string; content: string }>,
-    metaInfo: Record<string, any>,
-    generateCompletion: boolean,
-    append: boolean = false // Default to false if not provided
-  ): Promise<Thread & { assistantResponse?: string }> => {
+    {threadId, messages, metaInfo = {}, generateCompletion = false, append = false}: {
+      threadId: number,
+      messages: Array<{ role: string; content: string }>,
+      metaInfo?: Record<string, any>
+      generateCompletion?: boolean
+      append?: boolean
+    }): Promise<Thread & { assistantResponse?: string }> => {
     try {
       const response: AxiosResponse<Thread & {
         assistantResponse?: string
-      }> = await apiClient.put(`/threads/${threadId}`, {
+      }> = await apiClient.put(`/threads/${threadId}/update`, {
         messages,
         metaInfo,
         generateCompletion,
@@ -304,9 +314,19 @@ export const ThreadAPI = {
     }
   },
 
+  getByContent: async (contentId: number): Promise<Thread[]> => {
+    try {
+      const response: AxiosResponse<Thread[]> = await apiClient.get(`/threads/by-content/${contentId}`);
+      return response.data;
+    } catch (error) {
+      handleError(error as AxiosError);
+      throw error;
+    }
+  },
+
   delete: async (threadId: number): Promise<{ message: string }> => {
     try {
-      const response: AxiosResponse<{ message: string }> = await apiClient.delete(`/threads/${threadId}`);
+      const response: AxiosResponse<{ message: string }> = await apiClient.delete(`/threads/${threadId}/delete`);
       return response.data;
     } catch (error) {
       handleError(error as AxiosError);
@@ -317,9 +337,9 @@ export const ThreadAPI = {
 
 // Public Content API
 export const PublicContentAPI = {
-  list: async (): Promise<ContentCreatorContent[]> => {
+  list: async (): Promise<ContentPreview[]> => {
     try {
-      const response: AxiosResponse<ContentCreatorContent[]> = await apiClient.get('/public-contents');
+      const response: AxiosResponse<ContentPreview[]> = await apiClient.get('/public-contents');
       return response.data;
     } catch (error) {
       handleError(error as AxiosError);

@@ -3,7 +3,7 @@ import {createServer, type Server} from "http";
 import multer, {FileFilterCallback} from "multer";
 import path from "path";
 import {Content, ContentCreator, ContentRegistration, Subscriber, Thread, User} from "@db/schema";
-import {ASSISTANT_SYSTEM_PROMPT} from "./constants";
+import {ASSISTANT_SYSTEM_PROMPT, ASSISTANT_SYSTEM_PROMPT_INCLUDE_SPEECH} from "./constants";
 import {authenticateUser, authorizeContentCreator, authorizeSubscriber, createUser, loginUser} from "./auth";
 import {Op} from "sequelize";
 import openai from "./aiClient.ts"
@@ -11,6 +11,8 @@ import './training.ts'
 import {train_content} from "./training.ts";
 import {generateRandomString} from "@/utils";
 import {Message} from "@/types";
+import fs from 'fs'
+import {ChatCompletionMessageParam} from "openai/src/resources/chat/completions";
 
 // Extend the Request type to include the user property
 declare module 'express' {
@@ -22,126 +24,75 @@ declare module 'express' {
   }
 }
 
-import fs from 'fs'
-const generateCompletion = async (model: string, messages: Message[]) => {
-  const completion = await  openai.chat.completions.create({
-    model: "gpt-4o-audio-preview", // model, //todo: fix
-    messages: [
-      {role: "system", content: [{type:'text',text: ASSISTANT_SYSTEM_PROMPT}]},
-     // ...messages.map(m => ({role: m.role, content: [{type:'text', text: m.content}]})) //todo: why warn?
-      {
-        "role": "assistant",
-        "content": [
-          {
-            "type": "text",
-            "text": "I am a helpful AI Assistant"
-          }
-        ]
-      },
-      {
-        "role": "user",
-        "content": [
-          {
-            "type": "text",
-            "text": "what was my previous question"
-          }
-        ]
-      },
-      {
-        "role": "assistant",
-        "content": [
-          {
-            "type": "text",
-            "text": "You asked, \"Who are u?\""
-          }
-        ]
-      }
-    ],
-    modalities: ["text", "audio"],
-    audio: {
-      "voice": "ash",
-      "format": "wav"
+
+const generateCompletion = async (model: string, messages: Message[], includeSpeech = false) => {
+  const mapped = messages.map(m => ({
+    role: m.role,
+    content: [{type: 'text', text: m.content}],
+  } as ChatCompletionMessageParam))
+
+
+  mapped.unshift({
+    role: 'system',
+    // content: includeSpeech ? ASSISTANT_SYSTEM_PROMPT_INCLUDE_SPEECH : ASSISTANT_SYSTEM_PROMPT
+    content: ASSISTANT_SYSTEM_PROMPT
+  });
+
+  const completion = await openai.chat.completions.create({
+    model: model,
+    // model: "gpt-4o-mini",
+    messages: mapped,
+    response_format: {
+      "type": "text"
     },
     temperature: 1,
-    max_completion_tokens: 2048,
+    max_completion_tokens: 10000,
     top_p: 1,
     frequency_penalty: 0,
     presence_penalty: 0
   });
-  // const mapped =messages.map(m => ({role: m.role, content: [{type:'text', text: m.content}]}));
-  // const completion = await openai.chat.completions.create({
-  //   model: "gpt-4o-audio-preview",
-  //   messages: [
-  //     {
-  //       "role": "system",
-  //       "content": [
-  //         {
-  //           "type": "text",
-  //           "text": "You are a good AI assistant"
-  //         }
-  //       ]
-  //     },
-  //     // mapped[0],
-  //     // mapped[1],
-  //     // mapped[4]
-  //     {
-  //       "role": "user",
-  //       "content": [
-  //         {
-  //           "type": "text",
-  //           "text": "Who are u"
-  //         }
-  //       ]
-  //     },
-  //     {
-  //       "role": "assistant",
-  //       "content": [
-  //         {
-  //           "type": "text",
-  //           "text": "I am a helpful AI Assistant"
-  //         }
-  //       ]
-  //     },
-  //     {
-  //       "role": "user",
-  //       "content": [
-  //         {
-  //           "type": "text",
-  //           "text": "what was my previous question"
-  //         }
-  //       ]
-  //     },
-  //     {
-  //       "role": "assistant",
-  //       "content": [
-  //         {
-  //           "type": "text",
-  //           "text": "You asked, \"Who are u?\""
-  //         }
-  //       ]
-  //     }
-  //   ],
-  //   modalities: ["text", "audio"],
-  //   audio: {
-  //     "voice": "alloy",
-  //     "format": "wav"
-  //   },
-  //   temperature: 1,
-  //   max_completion_tokens: 2048,
-  //   top_p: 1,
-  //   frequency_penalty: 0,
-  //   presence_penalty: 0
-  // });
 
   const assistantResponse = completion.choices[0].message
 
-  return {
-    role: 'assistant',
-    'content': assistantResponse.content ?? assistantResponse.audio?.transcript,
-    // audio: assistantResponse.audio ? {id: assistantResponse.audio.id} : undefined //todo: fix this and the others
-    audio: assistantResponse.audio
+  if (includeSpeech) {
+    const speech = await openai.chat.completions.create({
+      model: "gpt-4o-audio-preview", // model, //todo: fix
+      messages: [{
+        role: 'system',
+        content: [{
+          type: 'text',
+          text: `Act as a narriator and speak aloud what the user provides you - do not change any thing or try to react to what the user says - JUST  Narriate`
+        }]
+      }, {
+        role: 'user',
+        content: [{
+          type: 'text',
+          // text: assistantResponse.content!.split('\n\n')[0]
+          text: assistantResponse.content!
+        }]
+      }]
+      , modalities: ["text", "audio"],
+      audio: {
+        "voice": "ash",
+        "format": "wav"
+      },
+      temperature: 1,
+      max_completion_tokens: 10000,
+      top_p: 1,
+      frequency_penalty: 0,
+      presence_penalty: 0
+    });
+
+    assistantResponse.audio = speech.choices[0].message.audio!
   }
 
+
+  return {
+    role: 'assistant',
+    // 'content': assistantResponse.content!.split('\n\n').slice(1).join('\n\n'),
+    content: assistantResponse.content,
+    audio: assistantResponse.audio
+  }
 }
 
 // Multer configuration for file uploads
@@ -212,8 +163,12 @@ const ContentCreatorView = {
             attributes: ['id', 'name', 'email']
           }]
         }]
-      }) as (ContentRegistration & {subscriber: Subscriber & {user: User}})[];
-      res.json(_contentSubscribers.map(c => c.dataValues).map(c => ({...c.subscriber.user.dataValues, id: c.subscriberId, joinedAt: c.createdAt})));
+      }) as (ContentRegistration & { subscriber: Subscriber & { user: User } })[];
+      res.json(_contentSubscribers.map(c => c.dataValues).map(c => ({
+        ...c.subscriber.user.dataValues,
+        id: c.subscriberId,
+        joinedAt: c.createdAt
+      })));
     } catch (error) {
       res.status(500).json({error: 'Failed to fetch subscribers'});
     }
@@ -481,45 +436,41 @@ const ThreadView = {
       if (!content)
         return res.status(404).json({error: 'Content not found'});
 
-      const thread = (await Thread.create({
-        name: req.body.name,
-        subscriberId: req.user!.id,
-        contentId: req.body.contentId,
-        messages: req.body.messages || [],
-        metaInfo: req.body.metaInfo || {},
-      })).dataValues;
-
-      let assistantResponse = null;
+      const simpleMessages = req.body.messages || []
+      const messagesWithVoice = [...simpleMessages]
 
       if (req.body.generateCompletion && req.body.messages?.length > 0) {
         const assistantResponse = await generateCompletion(
           content.modelInfo.model!,
-          [
-            {role: "system", content: ASSISTANT_SYSTEM_PROMPT},
-            ...req.body.messages,
-          ])
+          req.body.messages,
+          req.body.includeSpeech
+        )
 
-        await Thread.update(
-          // {messages: [...thread.messages, {...assistantResponse, audio: assistantResponse.audio? {id: assistantResponse.audio.id}: undefined}]},
-          {messages: [...thread.messages, assistantResponse]},
-          {where: {id: thread.id}}
-        );
+        messagesWithVoice.push(assistantResponse)
+        simpleMessages.push({...assistantResponse, audio: undefined})
       }
 
-      res.status(201).json({
-        ...thread,
-        assistantResponse,
-      });
-    } catch (error) {
+      const thread = (await Thread.create({
+        name: req.body.name,
+        subscriberId: req.user!.id,
+        contentId: req.body.contentId,
+        messages: simpleMessages,
+        metaInfo: req.body.metaInfo || {},
+      })).dataValues;
+
+      res.status(201).json({...thread, messages: messagesWithVoice});
+    } catch
+      (error) {
       console.error('Error creating thread:', error);
       res.status(500).json({error: 'Failed to create thread'});
     }
-  }],
+  }
+  ],
 
   update: [authorizeSubscriber, async (req: Request, res: Response) => {
     try {
       const threadId = parseInt(req.params.id);
-      const {messages, metaInfo, generateCompletion: shouldGenerateCompletion, append} = req.body;
+      const {messages = [], metaInfo, includeSpeech, append} = req.body;
 
       const thread = (await Thread.findOne({
         where: {id: threadId, subscriberId: req.user!.id}
@@ -534,17 +485,29 @@ const ThreadView = {
       if (!content)
         return res.status(404).json({error: 'Content not found'});
 
-      const updatedMessages = (append
+      const simpleMessages = (append
         ? [...thread.messages, ...messages]
         : messages).map((m: Message) => ({
         role: m.role,
         content: m.content,
-        audio: m.audio ? {id: m.audio.id} : undefined
       }));
+      const messagesWithVoice = [...simpleMessages]
 
-      const [updated] = await Thread.update(
+      if (req.body.generateCompletion && req.body.messages?.length > 0) {
+        const assistantResponse = await generateCompletion(
+          content.modelInfo.model!,
+          req.body.messages,
+          includeSpeech
+        )
+
+        messagesWithVoice.push(assistantResponse)
+        simpleMessages.push({...assistantResponse, audio: undefined})
+      }
+
+
+      const _ = await Thread.update(
         {
-          messages: updatedMessages,
+          messages: simpleMessages,
           metaInfo: metaInfo || thread.metaInfo,
         },
         {
@@ -552,25 +515,10 @@ const ThreadView = {
         }
       );
 
-      let assistantResponse = null;
-
-      if (updated && shouldGenerateCompletion) {
-        const assistantResponse = await generateCompletion(content.modelInfo.model!,
-          [
-            {role: "system", content: ASSISTANT_SYSTEM_PROMPT},
-            ...req.body.messages,
-          ])
-
-        await Thread.update(
-          {messages: [...updatedMessages, assistantResponse]},
-          {where: {id: threadId}}
-        );
-      }
 
       const updatedThread = await Thread.findByPk(threadId);
       res.json({
-        ...updatedThread!.dataValues,
-        assistantResponse,
+        ...updatedThread!.dataValues, messages: messagesWithVoice
       });
     } catch (error) {
       console.error('Error updating thread:', error);
@@ -578,67 +526,70 @@ const ThreadView = {
     }
   }],
 
-  get: [authorizeSubscriber, async (req: Request, res: Response) => {
-    try {
-      const threadId = parseInt(req.params.id);
-      const thread = (await Thread.findOne({
-        where: {id: threadId, subscriberId: req.user!.id}
-      }))?.dataValues;
+  get:
+    [authorizeSubscriber, async (req: Request, res: Response) => {
+      try {
+        const threadId = parseInt(req.params.id);
+        const thread = (await Thread.findOne({
+          where: {id: threadId, subscriberId: req.user!.id}
+        }))?.dataValues;
 
-      if (!thread) {
-        return res.status(404).json({error: 'Thread not found'});
-      }
+        if (!thread) {
+          return res.status(404).json({error: 'Thread not found'});
+        }
 
-      let assistantResponse = null;
-      if (req.body.generateCompletion && thread.messages.length > 0) {
-        const completion = await openai.chat.completions.create({
-          messages: [{role: "system", content: ASSISTANT_SYSTEM_PROMPT}, ...thread.messages],
-          model: "gpt-4",
+        let assistantResponse = null;
+        if (req.body.generateCompletion && thread.messages.length > 0) {
+          const completion = await openai.chat.completions.create({
+            messages: thread.messages,
+            model: "gpt-4",
+          });
+          assistantResponse = completion.choices[0].message.content;
+        }
+
+        res.json({
+          ...thread.dataValues,
+          assistantResponse
         });
-        assistantResponse = completion.choices[0].message.content;
+      } catch (error) {
+        res.status(500).json({error: 'Failed to fetch thread'});
       }
+    }],
 
-      res.json({
-        ...thread.dataValues,
-        assistantResponse
-      });
-    } catch (error) {
-      res.status(500).json({error: 'Failed to fetch thread'});
-    }
-  }],
+  delete:
+    [authorizeSubscriber, async (req: Request, res: Response) => {
+      try {
+        const threadId = parseInt(req.params.id);
+        const deleted = await Thread.destroy({
+          where: {id: threadId, subscriberId: req.user!.id}
+        });
 
-  delete: [authorizeSubscriber, async (req: Request, res: Response) => {
-    try {
-      const threadId = parseInt(req.params.id);
-      const deleted = await Thread.destroy({
-        where: {id: threadId, subscriberId: req.user!.id}
-      });
+        if (!deleted) {
+          return res.status(404).json({error: 'Thread not found'});
+        }
 
-      if (!deleted) {
-        return res.status(404).json({error: 'Thread not found'});
+        res.json({message: 'Thread deleted successfully'});
+      } catch (error) {
+        res.status(500).json({error: 'Failed to delete thread'});
       }
+    }],
 
-      res.json({message: 'Thread deleted successfully'});
-    } catch (error) {
-      res.status(500).json({error: 'Failed to delete thread'});
-    }
-  }],
-
-  listByContent: [authorizeSubscriber, async (req: Request, res: Response) => {
-    try {
-      const contentId = parseInt(req.params.contentId);
-      const threads = await Thread.findAll({
-        where: {
-          contentId,
-          subscriberId: req.user!.id
-        },
-        order: [['createdAt', 'DESC']]
-      });
-      res.json(threads);
-    } catch (error) {
-      res.status(500).json({error: 'Failed to fetch threads'});
-    }
-  }]
+  listByContent:
+    [authorizeSubscriber, async (req: Request, res: Response) => {
+      try {
+        const contentId = parseInt(req.params.contentId);
+        const threads = await Thread.findAll({
+          where: {
+            contentId,
+            subscriberId: req.user!.id
+          },
+          order: [['createdAt', 'DESC']]
+        });
+        res.json(threads);
+      } catch (error) {
+        res.status(500).json({error: 'Failed to fetch threads'});
+      }
+    }]
 };
 
 const PublicContentView = {

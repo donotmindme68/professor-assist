@@ -45,13 +45,23 @@ export interface ContentRegistration {
   updatedAt: string; // ISO date string
 }
 
-export interface Message {
-  role: 'assistant' | 'user';
+export interface AssistantMessage  {
+  role: 'assistant',
   content: string;
   audio?: {data?: string, id: string}
   error?: string;
-  createdAt?: string; // ISO date string
+  createdAt?: string;
 }
+
+export interface UserMessage  {
+  role: 'assistant',
+  content: string;
+  audio?: {data?: string, id: string}
+  error?: string;
+  createdAt?: string;
+}
+
+export type Message = AssistantMessage | UserMessage;
 
 export interface Thread {
   id: number;

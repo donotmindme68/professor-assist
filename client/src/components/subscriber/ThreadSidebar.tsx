@@ -19,7 +19,9 @@ interface ThreadSidebarProps {
   onCreateThread: (name: string) => void;
   onRetry: () => void;
   onToggleSidebar: (collapsed: boolean) => void;
-  isSpeaking: boolean
+  isSpeaking: boolean,
+  showNewThreadForm: boolean,
+  setShowNewThreadForm: (showNewThreadForm: boolean) => void,
 }
 
 const ThreadSidebar: React.FC<ThreadSidebarProps> = ({
@@ -35,8 +37,10 @@ const ThreadSidebar: React.FC<ThreadSidebarProps> = ({
   onToggleSidebar,
   isSpeaking = false,
   deleteThread,
+  showNewThreadForm,
+  setShowNewThreadForm
 }) => {
-  const [showNewThreadForm, setShowNewThreadForm] = useState(false);
+
   
   const handleCreateThread = (name: string) => {
     onCreateThread(name);

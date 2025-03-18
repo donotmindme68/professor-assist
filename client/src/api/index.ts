@@ -255,21 +255,23 @@ export const ContentAPI = {
 
 // Thread API
 export const ThreadAPI = {
-  create: async ({contentId, messages, metaInfo = {}, generateCompletion = false, name}: {
+  create: async ({contentId, messages, metaInfo = {}, generateCompletion = false, name, includeSpeech = false}: {
                    contentId: number,
                    messages: Array<{ role: string; content: string }>,
                    metaInfo: Record<string, any>
-                   generateCompletion?: boolean
+                   generateCompletion?: boolean,
+                    includeSpeech?: boolean,
                    name?: string
                  }
-  ): Promise<Thread & { assistantResponse?: string }> => {
+  ): Promise<Thread> => {
     try {
-      const response: AxiosResponse<Thread & { assistantResponse?: string }> = await apiClient.post('/threads/create', {
+      const response: AxiosResponse<Thread> = await apiClient.post('/threads/create', {
         name,
         contentId,
         messages,
         metaInfo,
         generateCompletion,
+        includeSpeech,
       });
       return response.data;
     } catch (error) {
@@ -279,12 +281,13 @@ export const ThreadAPI = {
   },
 
   update: async (
-    {threadId, messages, metaInfo = {}, generateCompletion = false, append = false}: {
+    {threadId, messages, metaInfo = {}, generateCompletion = false, append = false, includeSpeech = false}: {
       threadId: number,
       messages: Array<{ role: string; content: string }>,
       metaInfo?: Record<string, any>
       generateCompletion?: boolean
       append?: boolean
+      includeSpeech?: boolean
     }): Promise<Thread & { assistantResponse?: string }> => {
     try {
       const response: AxiosResponse<Thread & {
@@ -294,6 +297,7 @@ export const ThreadAPI = {
         metaInfo,
         generateCompletion,
         append,
+        includeSpeech
       });
       return response.data;
     } catch (error) {

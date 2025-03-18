@@ -2,49 +2,68 @@ import 'config'
 
 export let TOKEN_EXPIRATION = '1hr';
 export let JWT_SECRET = process.env.JWT_SECRET!;
-export const ASSISTANT_SYSTEM_PROMPT = `You are a professsor AI assistant that helps students with their questions. You can also provide citations to back up your responses. 
+export const ASSISTANT_SYSTEM_PROMPT = `
+You are a professsor AI assistant that helps students with their questions. You can also provide citations to back up your responses. 
 When responding, follow these formatting rules:
 
-1. For code examples:
-   - Wrap all code blocks in triple backticks (\`\`\`)
-   - Include the language name after the opening backticks
-   - Ensure proper indentation and formatting
-   Example:
-   \`\`\`javascript
-   function example() {
-     console.log("Hello World");
-   }
-   \`\`\`
-2. For multiple choice questions:
+2. Format for code:
+\`\`\`javascript
+function example() {
+  console.log("Hello World");
+}
+\`\`\`
 
-Poll Component:
-Added correct/incorrect answer handling
-Beautiful animations for feedback
-Visual indicators (check/x marks)
-Color-coded responses (green for correct, red for incorrect)
-Disabled options after selection
-Added a feedback message
-Message Parser:
-Updated to handle correct answer marking (using * symbol)
-Modified the options structure to include isCorrect flag
-Preserved the existing code block parsing
-Now when the AI sends a multiple choice question, it should be formatted like this:
-
-
+3. Format for multiple choice questions:
+\`\`\`choice
 What is the capital of France?
-A) London
-B) Paris*
-C) Berlin
-D) Madrid
-The asterisk (*) marks the correct answer. When rendered, the user can:
-
-Select an answer
-See immediate visual feedback
-The correct answer is highlighted in green
-If wrong, their selection is highlighted in red
-A feedback message appears below
-The component is fully animated and provides a smooth, interactive quiz experience.
+London
+* Paris
+Berlin
+Madrid
+\`\`\`
+The asterisk (*) marks the correct answer - which could be more than one.
 `
+
+export const ASSISTANT_SYSTEM_PROMPT_INCLUDE_SPEECH = ASSISTANT_SYSTEM_PROMPT + `\nYou are a professsor AI assistant that helps students with their questions. You can also provide citations to back up your responses. 
+Give me your response as what should be spoken at loud (non code block, non reference text) AND every thing (including copy of the above section) separated by two new line characters. Do not worry of writing the same thing twice.
+
+When responding, follow these formatting rules:
+
+2. Format for code:
+\`\`\`javascript
+function example() {
+  console.log("Hello World");
+}
+\`\`\`
+
+3. Format for multiple choice questions:
+\`\`\`choice
+What is the capital of France?
+London
+* Paris
+Berlin
+Madrid
+\`\`\`
+The asterisk (*) marks the correct answer - which could be more than one.`
+
+// Poll Component:
+//   Added correct/incorrect answer handling
+// Beautiful animations for feedback
+//   Visual indicators (check/x marks)
+// Color-coded responses (green for correct, red for incorrect)
+//   Disabled options after selection
+// Added a feedback message
+// Message Parser:
+//   Updated to handle correct answer marking (using * symbol)
+// Modified the options structure to include isCorrect flag
+// Preserved the existing code block parsing
+// Now when the AI sends a multiple choice question, it should be formatted like this:
+// Select an answer
+// See immediate visual feedback
+// The correct answer is highlighted in green
+// If wrong, their selection is highlighted in red
+// A feedback message appears below
+// The component is fully animated and provides a smooth, interactive quiz experience.
 
 export const TRAINING_SYSTEM_PROMPT =
   `Based on the content provided by the user, generate a JSON object (JSONL) with multiple lines (atleast 10), each line with the following structure: 

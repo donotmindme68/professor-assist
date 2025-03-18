@@ -27,6 +27,7 @@ const SubscriberContentView: React.FC<SubscriberContentViewProps> = ({content, o
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionError, setConnectionError] = useState<string | undefined>(undefined);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [showNewThreadForm, setShowNewThreadForm] = useState(false);
 
   const onAudioStart = useCallback(() => {
     console.log('Audio start')
@@ -187,13 +188,14 @@ const SubscriberContentView: React.FC<SubscriberContentViewProps> = ({content, o
     const sendMessage = async () => {
       try {
         setIsStreaming(true);
-        const updatedMessages = [...messages, newMessage].map(m => ({role: m.role, content: m.content, audio: m.audio? {id: m.audio.id}: undefined})); //todo: for now
+        const updatedMessages = [...messages, newMessage].map(m => ({role: m.role, content: m.content}));
 
         const response = await ThreadAPI.update({
           threadId: activeThreadId,
           messages: updatedMessages,
           append: false,
-          generateCompletion: true
+          generateCompletion: true,
+          includeSpeech: voiceEnabled
         });
 
         setMessages(response.messages)
@@ -269,7 +271,8 @@ const SubscriberContentView: React.FC<SubscriberContentViewProps> = ({content, o
             threadId: activeThreadId,
             messages: messagesWithoutLastAssistant.map(m => ({role: m.role, content: m.content, audio: m.audio? {id: m.audio.id}: undefined})),
             append: false,
-            generateCompletion: true
+            generateCompletion: true,
+            includeSpeech: voiceEnabled
           });
           const data = response.messages[response.messages.length - 1].audio?.data
           if (data) playAudio(data)
@@ -412,6 +415,8 @@ const SubscriberContentView: React.FC<SubscriberContentViewProps> = ({content, o
             className="flex-shrink-0 overflow-hidden"
           >
             <ThreadSidebar
+              showNewThreadForm={showNewThreadForm}
+              setShowNewThreadForm={setShowNewThreadForm}
               threads={threads}
               deleteThread={(threadId) => {
                 const filtered = threads.filter(t => t.id !== threadId)
@@ -474,6 +479,7 @@ const SubscriberContentView: React.FC<SubscriberContentViewProps> = ({content, o
                   whileTap={{scale: 0.95}}
                   onClick={() => {
                     setSidebarCollapsed(false);
+                    setShowNewThreadForm(true)
                   }}
                   className="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors duration-200"
                 >
